@@ -19,15 +19,24 @@ export async function POST(req: NextRequest) {
         id: userEmail // unique한 email 사용, 이름은 겹칠 수도
       })
     });
-    console.log(response);
 
     if (!response.ok) {
       throw new Error('인증 실패');
     }
+    
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // 클라이언트에 토큰 정보 반환
+    return NextResponse.json({
+      success: true,
+      token: data.token,
+      refresh_token: data.refresh_token,
+      user_id: data.user_id,
+      username: data.username
+    });
 
   } catch (error) {
+    console.error('로그인 에러:', error);
     return NextResponse.json(
       { error: '인증 처리 중 오류가 발생했습니다.' },
       { status: 500 }
