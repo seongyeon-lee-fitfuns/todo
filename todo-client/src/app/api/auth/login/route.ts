@@ -7,12 +7,9 @@ export async function POST(req: NextRequest) {
     const username = session?.user?.name;
     const userEmail = session?.user?.email;
 
-    // TODO:  defaultkey 환경변수로 변경
-    const auth = Buffer.from('defaultkey:').toString('base64');
+    const auth = Buffer.from(`${process.env.NAKAMA_SERVER_KEY}:`).toString('base64');
     
-    
-    // TODO: nakama 서버 주소 환경변수로 변경
-    const response = await fetch(`http://localhost:7350/v2/account/authenticate/custom?create=true&username=${username}`, {
+    const response = await fetch(`${process.env.NAKAMA_URL}/v2/account/authenticate/custom?create=true&username=${username}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
