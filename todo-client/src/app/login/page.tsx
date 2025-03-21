@@ -1,5 +1,4 @@
 'use client'
-import Image from 'next/image'
 import { useState } from 'react'
 
 export default function Login() {
@@ -8,15 +7,15 @@ export default function Login() {
     const handleLogin = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch('/api/nakama-login', {
                 method: 'POST',
             });
+            const data = await response.json();
             
             if (!response.ok) {
-                throw new Error('로그인 실패');
+                throw new Error(`로그인 실패: ${data.error}`);
             }
             
-            const data = await response.json();
             
             // 토큰 정보를 세션 스토리지에 저장
             if (data.token) {
@@ -36,8 +35,7 @@ export default function Login() {
                 window.location.href = '/';
             }
         } catch (error) {
-            console.error('로그인 에러:', error);
-            alert('로그인에 실패했습니다.');
+            alert(error);
         } finally {
             setIsLoading(false);
         }
