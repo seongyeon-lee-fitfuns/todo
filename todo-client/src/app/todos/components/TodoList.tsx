@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence } from 'framer-motion';
-import { Todo } from '../page';
+import { Todo } from './TodoApp';
 import TodoItem from './TodoItem';
 
 interface TodoListProps {

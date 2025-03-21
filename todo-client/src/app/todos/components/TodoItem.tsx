@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Todo } from '../page';
+import { Todo } from './TodoApp';
 
 interface TodoItemProps {
   todo: Todo;

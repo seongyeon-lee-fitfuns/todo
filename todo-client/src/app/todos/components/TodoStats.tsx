@@ -1,6 +1,6 @@
 'use client';
 
-import { Todo } from '../page';
+import { Todo } from './TodoApp';
 
 interface TodoStatsProps {
   todos: Todo[];
