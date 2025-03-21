@@ -127,15 +127,15 @@ export default function Home() {
   };
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <motion.div 
-        className="flex flex-wrap justify-center gap-2 md:gap-3 text-5xl font-bold"
-        variants={containerVariants}
-        initial="initial"
-        animate={controls}
-        onClick={handleChainReaction}
+	<div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+		<motion.div 
+			className="flex flex-wrap justify-center gap-2 md:gap-3 text-5xl font-bold"
+			variants={containerVariants}
+			initial="initial"
+			animate={controls}
+			onClick={handleChainReaction}
       >
-        {text.split('').map((char, i) => {
+			{text.split('').map((char, i) => {
           // 현재 글자의 애니메이션 상태 결정
           const currentState = 
             clickedIndex === i
@@ -145,21 +145,21 @@ export default function Home() {
               : "initial";
               
           return (
-            <motion.span
-              key={`${char}-${i}`}
-              custom={i}
-              variants={letterVariants}
-              initial="initial"
-              animate={currentState}
-              whileHover="hover"
-              onHoverStart={() => setIsHovered(i)}
-              onHoverEnd={() => setIsHovered(null)}
-              onClick={(e) => {
+	<motion.span
+		key={`${char}-${i}`}
+		custom={i}
+		variants={letterVariants}
+		initial="initial"
+		animate={currentState}
+		whileHover="hover"
+		onHoverStart={() => setIsHovered(i)}
+		onHoverEnd={() => setIsHovered(null)}
+		onClick={(e) => {
                 e.stopPropagation();
                 handleClick(i);
               }}
-              className={`inline-block cursor-pointer ${char === ' ' ? 'w-6' : ''}`}
-              style={{
+		className={`inline-block cursor-pointer ${char === ' ' ? 'w-6' : ''}`}
+		style={{
                 color: isHovered === i 
                   ? `hsl(${i * 30}, 100%, 50%)` 
                   : clickedIndex === i 
@@ -175,20 +175,20 @@ export default function Home() {
                 perspective: '1000px'
               }}
             >
-              {char === ' ' ? '\u00A0' : char}
-            </motion.span>
+		{char === ' ' ? '\u00A0' : char}
+	</motion.span>
           );
         })}
-      </motion.div>
+		</motion.div>
       
-      <motion.div
-        className="cursor-pointer px-4 py-2 text-white rounded-md shadow-md text-4xl"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleChainReaction}
+		<motion.div
+			className="cursor-pointer px-4 py-2 text-white rounded-md shadow-md"
+			whileHover={{ scale: 1.05 }}
+			whileTap={{ scale: 0.95 }}
+			onClick={handleChainReaction}
       >
-        👋
-      </motion.div>
-    </div>
+			👋
+		</motion.div>
+	</div>
   );
 }
