@@ -1,12 +1,12 @@
 "use client";
 
-import { useUser } from '@auth0/nextjs-auth0/client';
 import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNakamaUser } from '@/app/login/useNakamaUser';
 
 export default function Nav() {
-  const { user, error, isLoading } = useUser();
+  const { user, error, isLoading } = useNakamaUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
@@ -21,7 +21,7 @@ export default function Nav() {
             <div className="w-24 h-8 bg-gray-700 animate-pulse rounded"></div>
           ) : user ? (
             <>
-              <span className="text-gray-300">안녕하세요, {user.name}님!</span>
+              <span className="text-gray-300">안녕하세요, {user.displayName || user.username}님!</span>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link 
                   href="/api/auth/logout" 
@@ -72,7 +72,7 @@ export default function Nav() {
               <div className="w-full h-10 bg-gray-600 animate-pulse rounded"></div>
             ) : user ? (
               <>
-                <span className="text-gray-300 py-2">안녕하세요, {user.name}님!</span>
+                <span className="text-gray-300 py-2">안녕하세요, {user.displayName || user.username}님!</span>
                 <Link 
                   href="/api/auth/logout" 
                   className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-center transition duration-200"
@@ -82,7 +82,7 @@ export default function Nav() {
               </>
             ) : (
               <Link 
-                href="/api/auth/login" 
+                href="/api/nakama-login" 
                 className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded text-center transition duration-200"
               >
                 로그인

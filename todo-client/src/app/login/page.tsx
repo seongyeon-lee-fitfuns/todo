@@ -1,43 +1,18 @@
 'use client'
 import { useState } from 'react'
+import { useLogin } from './handleLogin'
 
 export default function Login() {
-    const [isLoading, setIsLoading] = useState(false);
+    const { handleLogin, isLoading } = useLogin();
 
-    const handleLogin = async () => {
-        setIsLoading(true);
+    const onLoginClick = async () => {
         try {
-            const response = await fetch('/api/nakama-login', {
-                method: 'POST',
-            });
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(`로그인 실패: ${data.error}`);
-            }
-            
-            
-            // 토큰 정보를 세션 스토리지에 저장
-            if (data.token) {
-                sessionStorage.setItem('nakamaToken', data.token);
-                
-                // 리프레시 토큰이 있다면 저장
-                if (data.refresh_token) {
-                    sessionStorage.setItem('nakamaRefreshToken', data.refresh_token);
-                }
-                
-                // 사용자 정보가 있다면 저장
-                if (data.user_id) {
-                    sessionStorage.setItem('nakamaUserId', data.user_id);
-                }
-                
-                // 로그인 성공 후 메인 페이지로 리다이렉트
-                window.location.href = '/';
+            const result = await handleLogin();
+            if (!result.success && result.error) {
+                alert(result.error);
             }
         } catch (error) {
-            alert(error);
-        } finally {
-            setIsLoading(false);
+            alert('로그인 중 오류가 발생했습니다');
         }
     };
 
@@ -53,7 +28,7 @@ export default function Login() {
                         </p>
                         
                         <button
-                            onClick={handleLogin}
+                            onClick={onLoginClick}
                             disabled={isLoading}
                             className="w-full bg-white/90 hover:bg-white text-purple-700 font-bold py-3 px-8 rounded-lg transition-all duration-200 flex items-center justify-center"
                         >
