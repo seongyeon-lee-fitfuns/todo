@@ -4,11 +4,25 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNakamaUser } from '@/app/login/useNakamaUser';
+import { useLogin } from '@/app/login/useLogin';
 
 export default function Nav() {
-  const { user, error, isLoading } = useNakamaUser();
+  const { user, error: nakamaError, isLoading: nakamaLoading } = useNakamaUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+  const { handleLogin, error: loginError, isLoading: loginLoading } = useLogin();
+  
+  // 에러 메시지를 표시하는 함수
+  const renderErrorMessage = () => {
+    if (loginError) {
+      return (
+        <div className="text-red-500 text-sm mt-2">
+          {loginError || '로그인에 실패했습니다.'}
+        </div>
+      );
+    }
+    return null;
+  };
+  
   return (
     <nav className="bg-gray-800/90 backdrop-blur-md text-white p-4 sticky top-0 z-10 shadow-lg">
       <div className="container mx-auto flex justify-between items-center">
@@ -17,7 +31,7 @@ export default function Nav() {
         <div className="hidden md:flex space-x-6 items-center">
           <Link href="/" className="hover:text-gray-300 transition duration-200">홈</Link>
           <Link href="/todos" className="hover:text-gray-300 transition duration-200">할 일 목록</Link>
-          {isLoading ? (
+          {nakamaLoading ? (
             <div className="w-24 h-8 bg-gray-700 animate-pulse rounded"></div>
           ) : user ? (
             <>
@@ -32,13 +46,19 @@ export default function Nav() {
               </motion.div>
             </>
           ) : (
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link 
-                href="/api/auth/login" 
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg shadow-md transition duration-200"
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex flex-col">
+              <button 
+                onClick={handleLogin}
+                disabled={loginLoading}
+                className={`px-4 py-2 rounded-lg shadow-md transition duration-200 ${
+                  loginLoading 
+                    ? 'bg-gray-500 cursor-not-allowed' 
+                    : 'bg-blue-500 hover:bg-blue-600'
+                }`}
               >
-                로그인
-              </Link>
+                {loginLoading ? '로그인 중...' : '로그인'}
+              </button>
+              {renderErrorMessage()}
             </motion.div>
           )}
         </div>
@@ -68,7 +88,7 @@ export default function Nav() {
           <div className="flex flex-col space-y-4">
             <Link href="/" className="hover:text-gray-300 py-2">홈</Link>
             <Link href="/todos" className="hover:text-gray-300 py-2">할 일 목록</Link>
-            {isLoading ? (
+            {nakamaLoading ? (
               <div className="w-full h-10 bg-gray-600 animate-pulse rounded"></div>
             ) : user ? (
               <>
@@ -81,12 +101,20 @@ export default function Nav() {
                 </Link>
               </>
             ) : (
-              <Link 
-                href="/api/nakama-login" 
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded text-center transition duration-200"
-              >
-                로그인
-              </Link>
+              <div className="flex flex-col">
+                <button 
+                  onClick={handleLogin}
+                  disabled={loginLoading}
+                  className={`px-4 py-2 rounded text-center transition duration-200 ${
+                    loginLoading 
+                      ? 'bg-gray-500 cursor-not-allowed' 
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  }`}
+                >
+                  {loginLoading ? '로그인 중...' : '로그인'}
+                </button>
+                {renderErrorMessage()}
+              </div>
             )}
           </div>
         </motion.div>

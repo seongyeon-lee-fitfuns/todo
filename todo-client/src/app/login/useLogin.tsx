@@ -7,6 +7,7 @@ interface LoginResult {
 
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (): Promise<LoginResult> => {
     setIsLoading(true);
@@ -41,14 +42,12 @@ export const useLogin = () => {
       
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다' 
-      };
+      setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다');
+      return { success: false };
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { handleLogin, isLoading };
+  return { handleLogin, error, isLoading };
 };
