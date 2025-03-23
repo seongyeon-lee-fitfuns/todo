@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { UserProvider } from '@auth0/nextjs-auth0/client';
 import Nav from './components/Nav';
 import "./globals.css";
 
@@ -28,14 +27,12 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen`}
       >
-        <UserProvider>
           <Nav />
-          <main className="container mx-auto p-4">
+          <main className="container mx-auto p-4 pb-16">
             {children}
           </main>
-        </UserProvider>
       </body>
     </html>
   );

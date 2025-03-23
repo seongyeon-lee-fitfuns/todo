@@ -42,8 +42,8 @@ export default function TodoApp({ title }: { title: string }) {
 	};
 
 	return (
-		<div className="max-w-md mx-auto bg-neutral-50 dark:bg-neutral-900 rounded-xl shadow-xl p-8 border border-neutral-200 dark:border-neutral-800">
-			<h1 className="text-3xl font-bold text-center mb-8 font-geist-sans">{title}</h1>
+		<div className="max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white/20">
+			<h1 className="text-3xl font-bold text-center mb-8 font-geist-sans text-white">{title}</h1>
 			<TodoForm onAddTodo={addTodo} />
 			<TodoList 
 				todos={todos} 

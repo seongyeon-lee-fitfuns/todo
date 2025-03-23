@@ -10,7 +10,7 @@ export default function Nav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <nav className="bg-gray-800 text-white p-4 sticky top-0 z-10 shadow-md">
+    <nav className="bg-gray-800/90 backdrop-blur-md text-white p-4 sticky top-0 z-10 shadow-lg">
       <div className="container mx-auto flex justify-between items-center">
         <Link href="/" className="text-xl font-bold font-mono">Todo App</Link>
         
@@ -25,7 +25,7 @@ export default function Nav() {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link 
                   href="/api/auth/logout" 
-                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded transition duration-200"
+                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg shadow-md transition duration-200"
                 >
                   로그아웃
                 </Link>
@@ -35,7 +35,7 @@ export default function Nav() {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link 
                 href="/api/auth/login" 
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded transition duration-200"
+                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg shadow-md transition duration-200"
               >
                 로그인
               </Link>
@@ -63,7 +63,7 @@ export default function Nav() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="md:hidden bg-gray-700 mt-2 p-4 rounded shadow-lg"
+          className="md:hidden bg-gray-700/90 backdrop-blur-md mt-2 p-4 rounded-lg shadow-lg"
         >
           <div className="flex flex-col space-y-4">
             <Link href="/" className="hover:text-gray-300 py-2">홈</Link>
