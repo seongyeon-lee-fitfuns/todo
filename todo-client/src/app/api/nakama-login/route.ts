@@ -7,8 +7,10 @@ export async function POST(req: NextRequest) {
     
     // 세션이 없는 경우 Auth0 로그인 페이지로 리다이렉트
     if (!session || !session.user) {
+      // 현재 경로를 쿼리 파라미터로 전달하여 로그인 후 돌아올 수 있도록 함
+      const returnTo = encodeURIComponent('/api/auth/nakama-auth-callback');
       return NextResponse.json(
-        { error: '인증이 필요합니다', redirectUrl: '/api/auth/login' },
+        { error: '인증이 필요합니다', redirectUrl: `/api/auth/login?returnTo=${returnTo}` },
         { status: 401 }
       );
     }

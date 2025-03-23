@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface LoginResult {
   success: boolean;
@@ -8,6 +9,22 @@ interface LoginResult {
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  // Auth0 인증 완료 후 자동 로그인 처리
+  useEffect(() => {
+    const authCompleted = searchParams.get('authCompleted');
+    
+    if (authCompleted === 'true') {
+      // URL 파라미터 제거 (선택사항)
+      const url = new URL(window.location.href);
+      url.searchParams.delete('authCompleted');
+      window.history.replaceState({}, '', url.toString());
+      
+      // 자동으로 Nakama 로그인 시도
+      handleLogin();
+    }
+  }, [searchParams]);
 
   const handleLogin = async (): Promise<LoginResult> => {
     setIsLoading(true);

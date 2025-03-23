@@ -1,9 +1,21 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLogin } from './useLogin'
+import { useSearchParams } from 'next/navigation'
 
 export default function Login() {
-    const { handleLogin, isLoading } = useLogin();
+    const { handleLogin, isLoading, error } = useLogin();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        // URL에 authCompleted 파라미터가 있는지 확인
+        const authCompleted = searchParams.get('authCompleted');
+        const authError = searchParams.get('error');
+        
+        if (authError) {
+            console.error('인증 오류:', authError);
+        }
+    }, [searchParams]);
 
     const onLoginClick = async () => {
         try {
@@ -26,6 +38,8 @@ export default function Login() {
                         <p className="text-white/90 mb-6 text-lg">
                             투두 앱을 사용하려면 로그인해 주세요
                         </p>
+                        
+                        {error && <div className="error-message">{error}</div>}
                         
                         <button
                             onClick={onLoginClick}
