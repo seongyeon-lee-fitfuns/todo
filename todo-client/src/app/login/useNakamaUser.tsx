@@ -83,8 +83,11 @@ export function useNakamaUser(): NakamaUserContext {
 
         if (!response.ok) {
           if (response.status === 401) {
-            // 토큰이 만료된 경우 리프레시 토큰으로 갱신을 시도할 수 있음
-            // 이 부분은 별도로 구현 필요
+            // 토큰이 만료된 경우, 세션 스토리지 데이터 삭제 및 사용자 상태 초기화
+            sessionStorage.removeItem('nakamaToken');
+            sessionStorage.removeItem('nakamaRefreshToken');
+            sessionStorage.removeItem('nakamaUserId');
+            setUser(undefined);
             throw new NakamaRequestError(response.status, '인증이 만료되었습니다');
           }
           throw new NakamaRequestError(response.status);
@@ -107,6 +110,18 @@ export function useNakamaUser(): NakamaUserContext {
   // 컴포넌트 마운트 시 사용자 정보 가져오기
   useEffect(() => {
     fetchNakamaUser();
+    
+    // 로그인/로그아웃 이벤트 리스너 등록
+    const handleUserStateChange = () => {
+      fetchNakamaUser();
+    };
+    
+    window.addEventListener('nakamaUserStateChanged', handleUserStateChange);
+    
+    // 클린업 함수
+    return () => {
+      window.removeEventListener('nakamaUserStateChanged', handleUserStateChange);
+    };
   }, [fetchNakamaUser]);
 
   return {

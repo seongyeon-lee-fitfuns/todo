@@ -4,8 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    const username = session?.user?.name;
-    const userEmail = session?.user?.email;
+    
+    // 세션이 없는 경우 Auth0 로그인 페이지로 리다이렉트
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다', redirectUrl: '/api/auth/login' },
+        { status: 401 }
+      );
+    }
+    
+    const username = session.user.name;
+    const userEmail = session.user.email;
 
     const auth = Buffer.from(`${process.env.NAKAMA_SERVER_KEY}:`).toString('base64');
     
