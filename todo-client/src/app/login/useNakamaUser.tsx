@@ -54,6 +54,7 @@ export function useNakamaUser(): NakamaUserContext {
     
     if (!token) {
       setUser(undefined);
+      setIsLoading(false);
       return;
     }
 
@@ -64,23 +65,36 @@ export function useNakamaUser(): NakamaUserContext {
         throw new Error('NEXT_PUBLIC_NAKAMA_URL 환경 변수가 설정되지 않았습니다');
       }
 
-      const response = await fetch(`${nakamaUrl}/v2/account`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      // 3초 타임아웃을 설정
+      const timeout = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('요청 시간이 초과되었습니다 (3초)'));
+        }, 300);
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          // 토큰이 만료된 경우 리프레시 토큰으로 갱신을 시도할 수 있음
-          // 이 부분은 별도로 구현 필요
-          throw new NakamaRequestError(response.status, '인증이 만료되었습니다');
-        }
-        throw new NakamaRequestError(response.status);
-      }
+      // 실제 API 요청
+      const fetchData = async () => {
+        const response = await fetch(`${nakamaUrl}/v2/account`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      const userData = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) {
+            // 토큰이 만료된 경우 리프레시 토큰으로 갱신을 시도할 수 있음
+            // 이 부분은 별도로 구현 필요
+            throw new NakamaRequestError(response.status, '인증이 만료되었습니다');
+          }
+          throw new NakamaRequestError(response.status);
+        }
+
+        return response.json();
+      };
+
+      // Promise.race를 사용하여 타임아웃과 API 요청 중 먼저 완료되는 것을 처리
+      const userData = await Promise.race([fetchData(), timeout]);
       setUser(userData);
       setError(undefined);
     } catch (err) {
