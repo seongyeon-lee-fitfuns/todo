@@ -1,11 +1,11 @@
 'use client';
 
 import { AnimatePresence } from 'framer-motion';
-import { Todo } from './TodoApp';
+import { TodoBase } from '@/app/api/todoApi';
 import TodoItem from './TodoItem';
 
 interface TodoListProps {
-  todos: Todo[];
+  todos: TodoBase[];
   onToggleComplete: (id: number) => void;
   onDeleteTodo: (id: number) => void;
 }

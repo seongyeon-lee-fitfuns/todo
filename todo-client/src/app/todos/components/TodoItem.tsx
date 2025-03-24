@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Todo } from './TodoApp';
+import { TodoBase } from '@/app/api/todoApi';
 
 interface TodoItemProps {
-  todo: Todo;
+  todo: TodoBase;
   onToggleComplete: (id: number) => void;
   onDeleteTodo: (id: number) => void;
 }
