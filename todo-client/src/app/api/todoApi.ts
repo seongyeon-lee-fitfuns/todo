@@ -180,24 +180,7 @@ export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> 
 					}
 				}));
 			} 
-			
-			// titles 배열이 없지만 직접 배열이 저장된 경우 (이전 형식 호환)
-			if (Array.isArray(parsedValue)) {
-				return parsedValue.map((title: TodoTitleBase) => ({
-					...title,
-					meta: {
-						collection: firstObject.collection,
-						create_time: firstObject.create_time,
-						key: firstObject.key,
-						permission_read: firstObject.permission_read,
-						permission_write: firstObject.permission_write,
-						update_time: firstObject.update_time,
-						user_id: firstObject.user_id,
-						version: firstObject.version
-					}
-				}));
-			}
-			
+		
 			// 단일 객체인 경우 배열로 변환
 			return [{
 				...parsedValue,
@@ -703,17 +686,32 @@ export async function deleteTodoItem(collection: string, todoId: string, version
 }
 
 /**
- * Nakama API를 사용하여 Todo 항목 업데이트/생성
- * 새로 만든 /api/nakama-todo 엔드포인트를 활용
+ * Nakama RPC를 사용하여 Todo 항목 업데이트/생성
+ * RPC 함수를 직접 호출합니다.
  */
 export async function updateTodoWithNakamaApi(todo: TodoInfo, collection: string): Promise<TodoInfo> {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/UpdateTodo`, {
-			method: 'POST',
-			body: JSON.stringify({
+		// 버전 정보 가져오기
+		const version = todo.meta?.version || '*';
+		
+		// RPC 호출용 객체 생성
+		const rpcPayload = {
+			todoItem: {
 				collection: collection,
-				todoItem: todo
-			}),
+				key: todo.id.toString(),
+				value: JSON.stringify({
+					id: todo.id,
+					text: todo.text,
+					completed: todo.completed
+				}),
+				version: version
+			}
+		};
+		
+		// Nakama RPC 직접 호출
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/update_todo?unwrap`, {
+			method: 'POST',
+			body: JSON.stringify(rpcPayload),
 		});
 
 		if (!response.ok) {
@@ -724,13 +722,129 @@ export async function updateTodoWithNakamaApi(todo: TodoInfo, collection: string
 		
 		const result = await response.json();
 		
-		if (!result.success || !result.data) {
-			throw new Error('Todo 업데이트에 실패했습니다');
+		if (!result || result.error) {
+			throw new Error(result?.error || 'Todo 업데이트에 실패했습니다');
 		}
 
-		return result.data as TodoInfo;
+		// meta가 없는 경우 기본값 생성
+		const currentMeta = todo.meta || {
+			collection: collection,
+			create_time: new Date().toISOString(),
+			key: todo.id.toString(),
+			permission_read: 2,
+			permission_write: 1,
+			update_time: new Date().toISOString(),
+			user_id: '',
+			version: '*'
+		};
+		
+		// 업데이트된 Todo 반환
+		return {
+			...todo,
+			meta: {
+				...currentMeta,
+				update_time: result.update_time || currentMeta.update_time,
+				version: result.version || currentMeta.version
+			}
+		};
 	} catch (error) {
-		console.error('Nakama Todo API 요청 실패:', error);
+		console.error('Nakama RPC 요청 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * Nakama RPC를 사용하여 새 Todo 항목 생성
+ */
+export async function createTodoWithNakamaApi(todo: TodoBase, collection: string): Promise<TodoInfo> {
+	try {
+		// RPC 호출용 객체 생성
+		const rpcPayload = {
+			objects: {
+				collection: collection,
+				key: todo.id.toString(),
+				value: JSON.stringify({
+					id: todo.id,
+					text: todo.text,
+					completed: todo.completed
+				}),
+				version: '*' // 새 항목은 서버가 버전 할당
+			}
+		};
+		
+		// Nakama RPC 직접 호출
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/create_todo?unwrap`, {
+			method: 'POST',
+			body: JSON.stringify(rpcPayload),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.error || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const result = await response.json();
+		
+		if (!result || result.error) {
+			throw new Error(result?.error || 'Todo 생성에 실패했습니다');
+		}
+
+		// 메타데이터가 포함된 Todo 항목 반환
+		return {
+			...todo,
+			meta: {
+				collection: collection,
+				create_time: result.create_time || new Date().toISOString(),
+				key: todo.id.toString(),
+				permission_read: 2,
+				permission_write: 1,
+				update_time: result.update_time || new Date().toISOString(),
+				user_id: result.user_id || '',
+				version: result.version || '*'
+			}
+		};
+	} catch (error) {
+		console.error('Nakama RPC Todo 생성 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * Nakama RPC를 사용하여 Todo 항목 삭제
+ */
+export async function deleteTodoWithNakamaApi(collection: string, todoId: string, version: string): Promise<boolean> {
+	try {
+		// RPC 호출용 객체 생성
+		const rpcPayload = {
+			deleteObject: {
+				collection: collection,
+				key: todoId,
+				version: version
+			}
+		};
+		
+		// Nakama RPC 직접 호출
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/delete_todo?unwrap`, {
+			method: 'POST',
+			body: JSON.stringify(rpcPayload),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.error || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const result = await response.json();
+		
+		if (!result || result.error) {
+			throw new Error(result?.error || 'Todo 삭제에 실패했습니다');
+		}
+
+		return true;
+	} catch (error) {
+		console.error('Nakama RPC Todo 삭제 실패:', error);
 		throw error;
 	}
 }
