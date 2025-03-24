@@ -240,7 +240,6 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 				// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
 				const firstObject = checkData.objects[0];
 				const existingData = JSON.parse(firstObject.value);
-				console.log('existingData', existingData);
 				
 				// 이미 타이틀 목록이 배열 형태로 저장되어 있는 경우
 				if (Array.isArray(existingData)) {
@@ -256,7 +255,6 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 				key = firstObject.key;
 				version = firstObject.version;
 			} catch (e) {
-				console.error('기존 todo_titles 파싱 실패:', e);
 				// 파싱 실패해도 계속 진행
 				key = titleId;
 				version = '*';
@@ -283,7 +281,6 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 			titles: existingTitles
 		};
 		
-		console.log('valueObject', valueObject);
 		// todo_titles 컬렉션 항목 생성
 		const todoTitleItem: TodoItem = {
 			collection: 'todo_titles',
