@@ -8,7 +8,6 @@ import {
 	TodoTitleInfo, 
 	fetchTodoTitles, 
 	createTodoTitle, 
-	updateTodoTitle,
 	deleteTodoTitle 
 } from "@/app/api/todoApi";
 
@@ -50,30 +49,6 @@ export default function TodoPage() {
 			setNewTitleInput(''); // 입력 필드 초기화
 		} catch (err) {
 			setError('새 Todo 목록 생성에 실패했습니다');
-			console.error(err);
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	// Todo 타이틀 이름 변경
-	const handleUpdateTodoTitle = async (titleInfo: TodoTitleInfo, newName: string) => {
-		if (!newName.trim()) return;
-		
-		setIsLoading(true);
-		setError(null);
-		
-		try {
-			const updatedTitleInfo = await updateTodoTitle({
-				...titleInfo,
-				name: newName
-			});
-			
-			setTitles(prev => 
-				prev.map(t => t.id === updatedTitleInfo.id ? updatedTitleInfo : t)
-			);
-		} catch (err) {
-			setError('Todo 목록 이름 변경에 실패했습니다');
 			console.error(err);
 		} finally {
 			setIsLoading(false);
