@@ -7,7 +7,7 @@ import {
 	TodoTitleBase, 
 	TodoTitleInfo, 
 	fetchTodoTitles, 
-	createTodoTitle, 
+	createTodoTitleWithNakamaApi,
 	deleteTodoTitle 
 } from "@/app/api/todoApi";
 
@@ -44,7 +44,7 @@ export default function TodoPage() {
 		setError(null);
 		
 		try {
-			const newTitleInfo = await createTodoTitle(newTitleInput, user.id);
+			const newTitleInfo = await createTodoTitleWithNakamaApi(newTitleInput);
 			setTitles(prev => [...prev, newTitleInfo]);
 			setNewTitleInput(''); // 입력 필드 초기화
 		} catch (err) {

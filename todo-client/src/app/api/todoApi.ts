@@ -330,6 +330,25 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 	}
 }
 
+export async function createTodoTitleWithNakamaApi(title: string) {
+	try {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/create_todo_title?unwrap`, {
+			method: 'POST',
+			body: JSON.stringify({ title: title })
+		});
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		const result = await response.json();
+		return result;
+	} catch (error) {
+		console.error('Todo 타이틀 생성 실패:', error);
+		throw error;
+	}
+}
+
 /**
  * Todo 타이틀 업데이트
  */
@@ -533,157 +552,6 @@ export async function fetchTodos(title: string, userId: string): Promise<TodoInf
 	}
 }
 
-/**
- * Todo 항목 생성
- */
-export async function createTodo(todo: TodoBase, title: string): Promise<TodoInfo> {
-	try {
-		const todoItem: TodoItem = {
-			collection: title,
-			key: todo.id.toString(),
-			value: JSON.stringify(todo),
-			version: '*', // 새 항목은 버전을 서버가 할당
-			permissionRead: 2, // 2: 소유자 및 인증된 사용자
-			permissionWrite: 1  // 1: 소유자만
-		};
-		
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-			method: 'PUT',
-			body: JSON.stringify({ objects: [todoItem] }),
-		});
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const result = await response.json();
-		console.log('result', result);
-		
-		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.acks?.[0];
-		if (!storageObject) {
-			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
-		}
-		
-		// 통합된 TodoInfo 객체 반환
-		return {
-			...todo,
-			meta: {
-				collection: storageObject.collection,
-				create_time: storageObject.create_time,
-				key: storageObject.key,
-				permission_read: storageObject.permission_read,
-				permission_write: storageObject.permission_write,
-				update_time: storageObject.update_time,
-				user_id: storageObject.user_id,
-				version: storageObject.version
-			}
-		};
-	} catch (error) {
-		console.error('Todo 생성 실패:', error);
-		throw error;
-	}
-}
-
-/**
- * Todo 항목 업데이트
- */
-export async function updateTodo(todo: TodoInfo, title: string): Promise<TodoInfo> {
-	try {
-		// 버전 정보 가져오기
-		const version = todo.meta?.version || '*';
-		
-		const todoItem: TodoItem = {
-			collection: title,
-			key: todo.id.toString(),
-			value: JSON.stringify({
-				id: todo.id,
-				text: todo.text,
-				completed: todo.completed
-			}),
-			version: version,
-			permissionRead: 2,
-			permissionWrite: 1
-		};
-		
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-			method: 'PUT',
-			body: JSON.stringify({ objects: [todoItem] }),
-		});
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const result = await response.json();
-		
-		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.acks?.[0];
-		if (!storageObject) {
-			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
-		}
-		
-		// meta가 없는 경우 기본값 생성
-		const currentMeta = todo.meta || {
-			collection: title,
-			create_time: new Date().toISOString(),
-			key: todo.id.toString(),
-			permission_read: 2,
-			permission_write: 1,
-			update_time: new Date().toISOString(),
-			user_id: '',
-			version: '*'
-		};
-		console.log('version', storageObject.version);
-		
-		
-		// 메타데이터 업데이트
-		return {
-			...todo,
-			meta: {
-				...currentMeta,
-				update_time: storageObject.update_time,
-				version: storageObject.version
-			}
-		};
-	} catch (error) {
-		console.error('Todo 업데이트 실패:', error);
-		throw error;
-	}
-}
-
-/**
- * Todo 항목 삭제
- */
-export async function deleteTodoItem(collection: string, todoId: string, version: string) {
-	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/delete`, {
-			method: 'PUT',
-			body: JSON.stringify({
-				object_ids: [{
-					collection: collection,
-					key: todoId,
-					version: version
-				}]
-			})
-		});
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		return true;
-	} catch (error) {
-		console.error('Todo 삭제 실패:', error);
-		throw error;
-	}
-}
 
 /**
  * Nakama RPC를 사용하여 Todo 항목 업데이트/생성
