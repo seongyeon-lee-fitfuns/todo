@@ -21,10 +21,10 @@ export interface UserRole {
 // 역할 목록 가져오기
 export async function listRoles() {
   try {
-    const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/rbac_list_roles?unwrap`, {
-      method: 'POST',
-      body: JSON.stringify({}),
+    const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/rbac_list_roles`, {
+      method: 'GET',
     });
+    console.log("list roles response", response);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
