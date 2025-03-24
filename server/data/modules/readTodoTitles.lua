@@ -8,8 +8,6 @@ nk.register_rpc(function(context, payload)
         nk.logger_info("페이로드: " .. nk.json_encode(json_payload))
     end
 
-    -- TODO: 추후 여기에 권한 검사 로직을 추가할 수 있습니다.
-    
     -- 스토리지에서 Todo 제목 목록 읽기
     local success, result = pcall(function()
         return nk.storage_read({
@@ -56,6 +54,7 @@ nk.register_rpc(function(context, payload)
             }
         }
     end
-    
+
+    -- TODO: 추후 여기에 권한 필터링 로직을 추가할 수 있습니다.
     return nk.json_encode(response)
 end, "read_todo_titles")
