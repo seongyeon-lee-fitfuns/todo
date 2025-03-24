@@ -211,7 +211,7 @@ export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> 
 export async function createTodoTitle(title: string, userId: string): Promise<TodoTitleInfo> {
 	try {
 		// 먼저 기존 todo_titles 컬렉션이 있는지 확인
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
 		
 		if (!checkResponse.ok) {
 			const errorData = await checkResponse.json().catch(() => null);
@@ -230,7 +230,8 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 			createTime: new Date().toISOString()
 		};
 		
-		let key, version;
+		let key;
+		let version = '*';
 		let existingTitles: TodoTitleInfo[] = [];
 		
 		// 기존 컬렉션이 있으면 데이터를 확인하고 새 타이틀 항목을 추가
@@ -239,6 +240,7 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 				// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
 				const firstObject = checkData.objects[0];
 				const existingData = JSON.parse(firstObject.value);
+				console.log('existingData', existingData);
 				
 				// 이미 타이틀 목록이 배열 형태로 저장되어 있는 경우
 				if (Array.isArray(existingData)) {
@@ -281,6 +283,7 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 			titles: existingTitles
 		};
 		
+		console.log('valueObject', valueObject);
 		// todo_titles 컬렉션 항목 생성
 		const todoTitleItem: TodoItem = {
 			collection: 'todo_titles',
