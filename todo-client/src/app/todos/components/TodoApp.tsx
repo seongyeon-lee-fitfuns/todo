@@ -4,165 +4,15 @@
 	import TodoForm from './TodoForm';
 	import TodoList from './TodoList';
 	import TodoStats from './TodoStats';
-	import { fetchWithAuth } from '@/app/api/fetchWithAuth';
 	import { useNakamaUser } from '@/app/login/useNakamaUser';
-	export interface Todo {
-		id: number;
-		text: string;
-		completed: boolean;
-	}
-
-	interface TodoItem {
-		collection: string;
-		key: string;
-		value: string;
-		version: string;
-		permissionRead: number;
-		permissionWrite: number;
-	}
-
-	type TodoReq = TodoItem[];
-
-	/**
-	 * Nakama 스토리지에서 Todo 목록 조회
-	 */
-	async function fetchTodos(title: string, userId: string) {
-		try {
-			const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}/${userId}?limit=100`, {
-				method: 'GET'
-			});
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => null);
-				const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-				throw new Error(errorMessage);
-			}
-			
-			const data = await response.json();
-			console.log('data', data);
-			
-			
-			// Nakama 스토리지 객체를 Todo 객체로 변환
-			return data.objects.map((item: any) => {
-				try {
-					return JSON.parse(item.value);
-				} catch (e) {
-					console.error('Todo 파싱 오류:', e);
-					return null;
-				}
-			}).filter(Boolean);
-			return [];
-		} catch (error) {
-			console.error('Todo 목록 조회 실패:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Todo 항목 생성
-	 */
-	async function createTodo(todo: Todo, title: string) {
-		try {
-			const todoItem: TodoItem = {
-				collection: title,
-				key: todo.id.toString(),
-				value: JSON.stringify(todo),
-				version: '*', // 새 항목은 버전을 서버가 할당
-				permissionRead: 2, // 2: 소유자 및 인증된 사용자
-				permissionWrite: 1  // 1: 소유자만
-			};
-			
-			const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-				method: 'PUT',
-				body: JSON.stringify({ objects: [todoItem] }),
-			});
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => null);
-				const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-				throw new Error(errorMessage);
-			}
-			
-			return await response.json();
-		} catch (error) {
-			console.error('Todo 생성 실패:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Todo 항목 업데이트
-	 */
-	async function updateTodo(todo: Todo, version: string) {
-		try {
-			const todoItem: TodoItem = {
-				collection: 'todos',
-				key: todo.id.toString(),
-				value: JSON.stringify(todo),
-				version: version, // 버전 정보 필요
-				permissionRead: 2,
-				permissionWrite: 1
-			};
-			
-			const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-				method: 'PUT',
-				body: JSON.stringify({ objects: [todoItem] }),
-			});
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => null);
-				const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-				throw new Error(errorMessage);
-			}
-			
-			return await response.json();
-		} catch (error) {
-			console.error('Todo 업데이트 실패:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Todo 항목 삭제
-	 */
-	async function deleteTodoItem(title: string) {
-		try {
-			const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}`, {
-				method: 'DELETE'
-			});
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => null);
-				const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-				throw new Error(errorMessage);
-			}
-			
-			return true;
-		} catch (error) {
-			console.error('Todo 삭제 실패:', error);
-			throw error;
-		}
-	}
-
-	/**
-	 * Todo 버전 정보 조회
-	 */
-	async function fetchTodoVersion(title: string) {
-		try {
-			const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}}`);
-			
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => null);
-				const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-				throw new Error(errorMessage);
-			}
-			
-			const data = await response.json();
-			return data.objects[0]?.version || '*';
-		} catch (error) {
-			console.error('Todo 버전 조회 실패:', error);
-			return '*'; // 조회 실패 시 새 버전으로 간주
-		}
-	}
+	import { 
+		Todo, 
+		fetchTodos, 
+		createTodo, 
+		updateTodo, 
+		deleteTodoItem, 
+		fetchTodoVersion 
+	} from '@/app/api/todoApi';
 
 	export default function TodoApp({ title }: { title: string }) {
 		const [todos, setTodos] = useState<Todo[]>([]);
@@ -173,7 +23,6 @@
 		const [todoVersions, setTodoVersions] = useState<Record<string, string>>({});
 
 		// 초기 Todo 목록 로드
-
 		useEffect(() => {
 			if (user) {
 				fetchTodos(title, user?.id || '')
@@ -183,7 +32,7 @@
 					// 버전 정보 초기화
 					const versions: Record<string, string> = {};
 					data.forEach((todo: Todo) => {
-						fetchTodoVersion(todo.id.toString())
+						fetchTodoVersion(title, todo.id.toString())
 							.then(version => {
 								versions[todo.id] = version;
 							});
@@ -197,7 +46,7 @@
 					setIsLoading(false);
 				});
 			}
-		}, [user]);
+		}, [user, title]);
 
 		// 새 할일 추가
 		const addTodo = (text: string) => {
@@ -248,7 +97,7 @@
 			setIsLoading(true);
 			
 			// 서버에 업데이트
-			updateTodo(updatedTodo, version)
+			updateTodo(updatedTodo, version, title)
 				.then(response => {
 					// 응답에서 새 버전 정보 추출
 					const newVersion = response.objects?.[0]?.version || version;
@@ -263,7 +112,9 @@
 				.catch(err => {
 					setError(err instanceof Error ? err.message : '할 일 상태 변경에 실패했습니다');
 					// 오류 시 다시 가져오기
-					fetchTodos(title, user?.id || '').then(setTodos);
+					if (user) {
+						fetchTodos(title, user.id || '').then(setTodos);
+					}
 				})
 				.finally(() => {
 					setIsLoading(false);
@@ -271,11 +122,11 @@
 		};
 
 		// 할일 삭제
-		const deleteTodo = (id: number) => {
+		const handleDeleteTodo = (id: number) => {
 			setError(null);
 			setIsLoading(true);
 			
-			deleteTodoItem(id.toString())
+			deleteTodoItem(title, id.toString())
 				.then(() => {
 					// 로컬 상태에서 삭제
 					setTodos(todos.filter(todo => todo.id !== id));
@@ -314,7 +165,7 @@
 				<TodoList 
 					todos={todos} 
 					onToggleComplete={toggleComplete} 
-					onDeleteTodo={deleteTodo} 
+					onDeleteTodo={handleDeleteTodo} 
 				/>
 				
 				{todos.length > 0 && <TodoStats todos={todos} />}
