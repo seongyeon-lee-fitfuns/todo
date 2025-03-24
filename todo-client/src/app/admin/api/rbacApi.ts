@@ -1,3 +1,5 @@
+import { fetchWithAuth } from '@/app/api/fetchWithAuth';
+
 // RBAC API 호출 함수들
 
 export interface Role {
@@ -19,15 +21,15 @@ export interface UserRole {
 // 역할 목록 가져오기
 export async function listRoles() {
   try {
-    const response = await fetch('/api/rbac-proxy?endpoint=rbac_list_roles', {
+    const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/rbac_list_roles?unwrap`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
-      throw new Error(`역할 목록 조회 실패: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.message || `역할 목록 조회 실패: ${response.status}`;
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -41,11 +43,8 @@ export async function listRoles() {
 // 역할 생성
 export async function createRole(roleName: string, description: string, permissions: string[] = []) {
   try {
-    const response = await fetch('/api/rbac-proxy?endpoint=rbac_create_role', {
+    const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/rbac_create_role?unwrap`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         role_name: roleName,
         description,
@@ -54,7 +53,9 @@ export async function createRole(roleName: string, description: string, permissi
     });
 
     if (!response.ok) {
-      throw new Error(`역할 생성 실패: ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      const errorMessage = errorData?.message || `역할 생성 실패: ${response.status}`;
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
