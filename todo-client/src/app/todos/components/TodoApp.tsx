@@ -104,7 +104,7 @@ export default function TodoApp({ title }: { title: string }) {
 		setError(null);
 		setIsLoading(true);
 		
-		deleteTodoItem(title, id.toString())
+		deleteTodoItem(title, id.toString(), todos.find(t => t.id === id)?.meta?.version || '')
 			.then(() => {
 				// 로컬 상태에서 삭제
 				setTodos(todos.filter(todo => todo.id !== id));

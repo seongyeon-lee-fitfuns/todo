@@ -446,7 +446,7 @@ export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTit
 }
 
 /**
- * Todo 타이틀 삭제
+ * Todo 타이틀 삭제, 사실 내부적으로는 update...
  */
 export async function deleteTodoTitle(titleId: string, userId: string) {
 	try {
@@ -503,10 +503,12 @@ export async function deleteTodoTitle(titleId: string, userId: string) {
 			permissionWrite: firstObject.permission_write
 		};
 		
+		// TODO: 서버 로직에서 삭제한 title 같은 이름의 컬렉션 삭제 처리 필요
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
 			method: 'PUT',
 			body: JSON.stringify({ objects: [todoTitleItem] })
 		});
+		
 		
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => null);
@@ -672,10 +674,17 @@ export async function updateTodo(todo: TodoInfo, title: string): Promise<TodoInf
 /**
  * Todo 항목 삭제
  */
-export async function deleteTodoItem(collection: string, todoId: string) {
+export async function deleteTodoItem(collection: string, todoId: string, version: string) {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${collection}/${todoId}`, {
-			method: 'DELETE'
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/delete`, {
+			method: 'PUT',
+			body: JSON.stringify({
+				object_ids: [{
+					collection: collection,
+					key: todoId,
+					version: version
+				}]
+			})
 		});
 		
 		if (!response.ok) {
