@@ -237,9 +237,10 @@ export async function createTodo(todo: TodoBase, title: string): Promise<TodoInf
 		}
 		
 		const result = await response.json();
+		console.log('result', result);
 		
 		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.objects?.[0];
+		const storageObject = result.acks?.[0];
 		if (!storageObject) {
 			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
 		}
@@ -299,7 +300,7 @@ export async function updateTodo(todo: TodoInfo, title: string): Promise<TodoInf
 		const result = await response.json();
 		
 		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.objects?.[0];
+		const storageObject = result.acks?.[0];
 		if (!storageObject) {
 			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
 		}
