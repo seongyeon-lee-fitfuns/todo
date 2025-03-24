@@ -24,7 +24,6 @@ export async function listRoles() {
     const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/rbac_list_roles`, {
       method: 'GET',
     });
-    console.log("list roles response", response);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
@@ -33,7 +32,9 @@ export async function listRoles() {
     }
 
     const data = await response.json();
-    return data.roles || [];
+    const payload = JSON.parse(data.payload);
+    const roles = JSON.parse(payload.roles);
+    return roles;
   } catch (error) {
     console.error('역할 목록 조회 오류:', error);
     throw error;

@@ -16,7 +16,13 @@ export default function RoleManagement() {
     try {
       setLoading(true)
       const data = await listRoles()
-      setRoles(data)
+      const roles = data.map((role: any) => ({
+        role_name: role.key,
+        description: role.value.description,
+        created_at: role.create_time,
+        updated_at: role.update_time
+      }))
+      setRoles(roles)
       setError(null)
     } catch (err) {
       setError('역할 목록을 불러오는 중 오류가 발생했습니다')
