@@ -6,13 +6,13 @@ import { useNakamaUser } from "@/app/login/useNakamaUser";
 import { 
 	TodoTitleBase, 
 	TodoTitleInfo, 
-	fetchTodoTitles, 
+	fetchTodoTitlesWithNakamaApi, 
 	createTodoTitleWithNakamaApi,
-	deleteTodoTitle 
+	deleteTodoTitleWithNakamaApi 
 } from "@/app/api/todoApi";
 
 export default function TodoPage() {
-	const [titles, setTitles] = useState<TodoTitleInfo[]>([]);
+	const [titles, setTitles] = useState<string[]>([]);
 	const [newTitleInput, setNewTitleInput] = useState('');
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -22,8 +22,9 @@ export default function TodoPage() {
 	useEffect(() => {
 		if (user?.id) {
 			setIsLoading(true);
-			fetchTodoTitles(user.id)
+			fetchTodoTitlesWithNakamaApi()
 				.then(titleInfos => {
+					console.log('titleInfos', titleInfos);
 					setTitles(titleInfos);
 				})
 				.catch(err => {
@@ -45,7 +46,8 @@ export default function TodoPage() {
 		
 		try {
 			const newTitleInfo = await createTodoTitleWithNakamaApi(newTitleInput);
-			setTitles(prev => [...prev, newTitleInfo]);
+			console.log('newTitleInfo', newTitleInfo);
+			setTitles(newTitleInfo);
 			setNewTitleInput(''); // 입력 필드 초기화
 		} catch (err) {
 			setError('새 Todo 목록 생성에 실패했습니다');
@@ -56,15 +58,16 @@ export default function TodoPage() {
 	};
 
 	// Todo 타이틀 삭제
-	const handleDeleteTodoTitle = async (id: string) => {
-		if (!id || !user?.id) return;
+	const handleDeleteTodoTitle = async (title: string) => {
+		if (!title || !user?.id) return;
 		
 		setIsLoading(true);
 		setError(null);
 		
 		try {
-			await deleteTodoTitle(id, user.id);
-			setTitles(prev => prev.filter(title => title.id !== id));
+			const result = await deleteTodoTitleWithNakamaApi(title);
+			console.log('result ------------', result);
+			setTitles(result);
 		} catch (err) {
 			setError('Todo 목록 삭제에 실패했습니다');
 			console.error(err);
@@ -101,21 +104,21 @@ export default function TodoPage() {
 
 			{/* Todo 앱 목록 */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{titles.length === 0 && !isLoading ? (
+				{(titles.length === 0 || Object.keys(titles).length === 0) && !isLoading ? (
 					<div className="col-span-full text-center py-12 text-white">
 						<p className="text-xl">아직 Todo 목록이 없습니다. 위에서 새 목록을 만들어보세요!</p>
 					</div>
 				) : (
-					titles.map((titleInfo) => (
-						<div key={titleInfo.id} className="relative">
+					titles?.map((title) => (
+						<div key={title} className="relative">
 							<button
-								onClick={() => handleDeleteTodoTitle(titleInfo.id)}
+								onClick={() => handleDeleteTodoTitle(title)}
 								className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full z-10"
 								title="삭제"
 							>
 								×
 							</button>
-							<TodoApp title={titleInfo.name} />
+							<TodoApp title={title} />
 						</div>
 					))
 				)}

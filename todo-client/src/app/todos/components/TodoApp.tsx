@@ -23,7 +23,7 @@ export default function TodoApp({ title }: { title: string }) {
 	// 초기 Todo 목록 로드
 	useEffect(() => {
 		if (user) {
-			fetchTodos(title, user?.id || '')
+			fetchTodos(title)
 				.then(todoInfos => {
 					setTodos(todoInfos);
 				})
@@ -91,7 +91,7 @@ export default function TodoApp({ title }: { title: string }) {
 				setError(err instanceof Error ? err.message : '할 일 상태 변경에 실패했습니다');
 				// 오류 시 다시 가져오기
 				if (user) {
-					fetchTodos(title, user.id || '').then(setTodos);
+					fetchTodos(title).then(setTodos);
 				}
 			})
 			.finally(() => {

@@ -34,23 +34,29 @@ nk.register_rpc(function(context, payload)
         
         -- 기존 데이터가 있는지 확인
         if read_success and #read_result > 0 then
-            -- 기존 데이터에 새 제목 추가
+            -- 기존 데이터에서 제목 삭제
             local existing_data = read_result[1].value
             
             -- 기존 데이터가 배열이 아니면 배열로 변환
             if not existing_data.titles then
                 existing_data = {titles = {}}
+            else
+                -- 삭제할 제목 찾기
+                local new_titles = {}
+                for i, title in ipairs(existing_data.titles) do
+                    if title ~= json_payload.title then
+                        table.insert(new_titles, title)
+                    end
+                end
+                existing_data.titles = new_titles
             end
-            
-            -- 새로운 제목 추가
-            table.insert(existing_data.titles, json_payload.title)
             
             -- 스토리지 객체 업데이트
             storage_object.value = existing_data
             storage_object.version = read_result[1].version
         else
-            -- 기존 데이터가 없으면 새로 생성
-            storage_object.value = {titles = {json_payload.title}}
+            -- 기존 데이터가 없으면 빈 배열 생성
+            storage_object.value = {titles = {}}
         end
         
         return nk.storage_write({storage_object})
@@ -64,9 +70,13 @@ nk.register_rpc(function(context, payload)
     
     -- 에러 처리
     if not success then
-        nk.logger_error("Todo 제목 생성 실패: " .. tostring(result))
-        error("Todo 제목 생성 중 오류 발생: " .. tostring(result))
+        nk.logger_error("Todo 제목 삭제 실패: " .. tostring(result))
+        error("Todo 제목 삭제 중 오류 발생: " .. tostring(result))
     end
     
+    -- 현재 시간 생성
+    local current_time = os.date("!%Y-%m-%dT%H:%M:%SZ")
+  
+    
     return nk.json_encode(storage_object.value)
-end, "create_todo_title")
+end, "delete_todo_title")

@@ -141,193 +141,17 @@ export function createTodoTitleInfosFromStorage(storageObjects: NakamaStorageObj
 /**
  * Todo 타이틀 목록 조회
  */
-export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> {
-	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const data = await response.json();
-		
-		// 응답 데이터가 없으면 빈 배열 반환
-		if (!data.objects || data.objects.length === 0) {
-			return [];
-		}
-		
-		try {
-			// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
-			const firstObject = data.objects[0];
-			const parsedValue = JSON.parse(firstObject.value);
-			
-			// titles 배열이 있는 경우
-			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
-				// 각 항목에 메타데이터 추가
-				return parsedValue.titles.map((title: TodoTitleBase) => ({
-					...title,
-					meta: {
-						collection: firstObject.collection,
-						create_time: firstObject.create_time,
-						key: firstObject.key,
-						permission_read: firstObject.permission_read,
-						permission_write: firstObject.permission_write,
-						update_time: firstObject.update_time,
-						user_id: firstObject.user_id,
-						version: firstObject.version
-					}
-				}));
-			} 
-		
-			// 단일 객체인 경우 배열로 변환
-			return [{
-				...parsedValue,
-				meta: {
-					collection: firstObject.collection,
-					create_time: firstObject.create_time,
-					key: firstObject.key,
-					permission_read: firstObject.permission_read,
-					permission_write: firstObject.permission_write,
-					update_time: firstObject.update_time,
-					user_id: firstObject.user_id,
-					version: firstObject.version
-				}
-			}];
-		} catch (e) {
-			console.error('Todo 타이틀 파싱 실패:', e);
-			return [];
-		}
-	} catch (error) {
-		console.error('Todo 타이틀 목록 조회 실패:', error);
-		throw error;
+export async function fetchTodoTitlesWithNakamaApi() {
+	const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/read_todo_titles`, {
+		method: 'GET',
+	});
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => null);
+		const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+		throw new Error(errorMessage);
 	}
-}
-
-/**
- * 새 Todo 타이틀 생성
- */
-export async function createTodoTitle(title: string, userId: string): Promise<TodoTitleInfo> {
-	try {
-		// 먼저 기존 todo_titles 컬렉션이 있는지 확인
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
-		
-		if (!checkResponse.ok) {
-			const errorData = await checkResponse.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const checkData = await checkResponse.json();
-		const collectionExists = checkData.objects && checkData.objects.length > 0;
-		
-		// 새 타이틀 생성
-		const titleId = Date.now().toString();
-		const newTitle: TodoTitleBase = {
-			id: titleId,
-			name: title,
-			createTime: new Date().toISOString()
-		};
-		
-		let key;
-		let version = '*';
-		let existingTitles: TodoTitleInfo[] = [];
-		
-		// 기존 컬렉션이 있으면 데이터를 확인하고 새 타이틀 항목을 추가
-		if (collectionExists) {
-			try {
-				// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
-				const firstObject = checkData.objects[0];
-				const existingData = JSON.parse(firstObject.value);
-				
-				// 이미 타이틀 목록이 배열 형태로 저장되어 있는 경우
-				if (Array.isArray(existingData)) {
-					existingTitles = existingData;
-				} else if (existingData.titles && Array.isArray(existingData.titles)) {
-					existingTitles = existingData.titles;
-				} else {
-					// 단일 객체인 경우, 배열로 변환
-					existingTitles = [existingData];
-				}
-				
-				// 키와 버전 저장
-				key = firstObject.key;
-				version = firstObject.version;
-			} catch (e) {
-				// 파싱 실패해도 계속 진행
-				key = titleId;
-				version = '*';
-				existingTitles = [];
-			}
-		} else {
-			// 컬렉션이 없는 경우 기본값 설정
-			key = titleId;
-			version = '*';
-		}
-		
-		// 이미 존재하는 타이틀인지 확인 (id로 비교)
-		const isDuplicate = existingTitles.some(item => 
-			(item.id === newTitle.id) || (item.name && item.name === newTitle.name)
-		);
-		
-		if (!isDuplicate) {
-			// 중복이 아니면 추가
-			existingTitles.push(newTitle);
-		}
-		
-		// JSON 형태로 titles 배열을 포함한 객체 생성
-		const valueObject = {
-			titles: existingTitles
-		};
-		
-		// todo_titles 컬렉션 항목 생성
-		const todoTitleItem: TodoItem = {
-			collection: 'todo_titles',
-			key: key,
-			value: JSON.stringify(valueObject), // 객체를 JSON 문자열로 변환
-			version: version,
-			permissionRead: 2, // 소유자 및 인증된 사용자가 읽기 가능
-			permissionWrite: 1  // 소유자만 쓰기 가능
-		};
-		
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-			method: 'PUT',
-			body: JSON.stringify({ objects: [todoTitleItem] })
-		});
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const result = await response.json();
-		
-		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.acks?.[0];
-		if (!storageObject) {
-			throw new Error('서버 응답에서 TodoTitle 항목을 찾을 수 없습니다');
-		}
-		
-		// 통합된 TodoTitleInfo 객체 반환
-		return {
-			...newTitle,
-			meta: {
-				collection: storageObject.collection,
-				create_time: storageObject.create_time,
-				key: storageObject.key,
-				permission_read: storageObject.permission_read,
-				permission_write: storageObject.permission_write,
-				update_time: storageObject.update_time,
-				user_id: storageObject.user_id,
-				version: storageObject.version
-			}
-		};
-	} catch (error) {
-		console.error('Todo 타이틀 생성 실패:', error);
-		throw error;
-	}
+	const result = await response.json();
+	return JSON.parse(result.payload).titles;
 }
 
 export async function createTodoTitleWithNakamaApi(title: string) {
@@ -342,7 +166,7 @@ export async function createTodoTitleWithNakamaApi(title: string) {
 			throw new Error(errorMessage);
 		}
 		const result = await response.json();
-		return result;
+		return result.titles;
 	} catch (error) {
 		console.error('Todo 타이틀 생성 실패:', error);
 		throw error;
@@ -350,187 +174,28 @@ export async function createTodoTitleWithNakamaApi(title: string) {
 }
 
 /**
- * Todo 타이틀 업데이트
- */
-export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTitleInfo> {
-	try {
-		if (!todoTitle.meta) {
-			throw new Error('메타데이터가 없는 TodoTitle은 업데이트할 수 없습니다.');
-		}
-		
-		// 먼저 기존 데이터 조회
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
-		
-		if (!checkResponse.ok) {
-			const errorData = await checkResponse.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const checkData = await checkResponse.json();
-		const collectionExists = checkData.objects && checkData.objects.length > 0;
-		
-		if (!collectionExists) {
-			throw new Error('기존 Todo 타이틀 데이터를 찾을 수 없습니다.');
-		}
-		
-		// 기존 데이터에서 업데이트하려는 항목 제외하고 나머지 유지
-		const firstObject = checkData.objects[0];
-		let updatedTitles: TodoTitleBase[] = [];
-		
-		try {
-			const parsedValue = JSON.parse(firstObject.value);
-			
-			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
-				// titles 배열이 있으면 해당 항목 업데이트
-				updatedTitles = parsedValue.titles.map((item: TodoTitleBase) => 
-					item.id === todoTitle.id ? { id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime } : item
-				);
-			} else if (Array.isArray(parsedValue)) {
-				// 배열 형식으로 저장된 경우
-				updatedTitles = parsedValue.map((item: TodoTitleBase) => 
-					item.id === todoTitle.id ? { id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime } : item
-				);
-			} else {
-				// 단일 항목인 경우, 배열로 변환
-				updatedTitles = [{ id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime }];
-			}
-		} catch (e) {
-			console.error('기존 todo_titles 파싱 실패:', e);
-			// 파싱 실패시 해당 항목만 포함
-			updatedTitles = [{ id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime }];
-		}
-		
-		// JSON 형태로 titles 배열을 포함한 객체 생성
-		const valueObject = {
-			titles: updatedTitles
-		};
-		
-		const todoTitleItem: TodoItem = {
-			collection: todoTitle.meta.collection,
-			key: todoTitle.meta.key,
-			value: JSON.stringify(valueObject),
-			version: todoTitle.meta.version,
-			permissionRead: todoTitle.meta.permission_read,
-			permissionWrite: todoTitle.meta.permission_write
-		};
-		
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-			method: 'PUT',
-			body: JSON.stringify({ objects: [todoTitleItem] }),
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const result = await response.json();
-		const storageObject = result.acks?.[0];
-		
-		if (!storageObject) {
-			throw new Error('서버 응답에서 TodoTitle 항목을 찾을 수 없습니다');
-		}
-		
-		return {
-			...todoTitle,
-			meta: {
-				...todoTitle.meta,
-				update_time: storageObject.update_time,
-				version: storageObject.version
-			}
-		};
-	} catch (error) {
-		console.error('TodoTitle 업데이트 실패:', error);
-		throw error;
-	}
-}
-
-/**
  * Todo 타이틀 삭제, 사실 내부적으로는 update...
  */
-export async function deleteTodoTitle(titleId: string, userId: string) {
-	try {
-		// 먼저 기존 데이터를 가져옴
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
-		
-		if (!checkResponse.ok) {
-			const errorData = await checkResponse.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const checkData = await checkResponse.json();
-		const collectionExists = checkData.objects && checkData.objects.length > 0;
-		
-		if (!collectionExists) {
-			throw new Error('삭제할 Todo 타이틀 데이터를 찾을 수 없습니다.');
-		}
-		
-		// 기존 데이터에서 삭제할 항목을 제거
-		const firstObject = checkData.objects[0];
-		let updatedTitles: TodoTitleBase[] = [];
-		
-		try {
-			const parsedValue = JSON.parse(firstObject.value);
-			
-			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
-				// titles 배열에서 해당 ID를 제외
-				updatedTitles = parsedValue.titles.filter((item: TodoTitleBase) => item.id !== titleId);
-			} else if (Array.isArray(parsedValue)) {
-				// 배열 형식인 경우 해당 ID를 제외
-				updatedTitles = parsedValue.filter((item: TodoTitleBase) => item.id !== titleId);
-			} else {
-				// 단일 항목이면서 ID가 일치하면 빈 배열 반환, 아니면 그대로 유지
-				updatedTitles = parsedValue.id === titleId ? [] : [parsedValue];
-			}
-		} catch (e) {
-			console.error('기존 todo_titles 파싱 실패:', e);
-			return false;
-		}
-		
-		// 새로운 값 객체 생성
-		const valueObject = {
-			titles: updatedTitles
-		};
-		
-		// todo_titles 컬렉션 항목 업데이트
-		const todoTitleItem: TodoItem = {
-			collection: firstObject.collection,
-			key: firstObject.key,
-			value: JSON.stringify(valueObject),
-			version: firstObject.version,
-			permissionRead: firstObject.permission_read,
-			permissionWrite: firstObject.permission_write
-		};
-		
-		// TODO: 서버 로직에서 삭제한 title 같은 이름의 컬렉션 삭제 처리 필요
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
-			method: 'PUT',
-			body: JSON.stringify({ objects: [todoTitleItem] })
-		});
-		
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		return true;
-	} catch (error) {
-		console.error('Todo 타이틀 삭제 실패:', error);
-		throw error;
+export async function deleteTodoTitleWithNakamaApi(title: string) {
+	const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/delete_todo_title?unwrap`, {
+		method: 'POST',
+		body: JSON.stringify({ title: title })
+	});
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => null);
+		const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+		throw new Error(errorMessage);
 	}
+	const result = await response.json();
+	return result.titles;
 }
 
 /**
  * Nakama 스토리지에서 Todo 목록 조회
  */
-export async function fetchTodos(title: string, userId: string): Promise<TodoInfo[]> {
+export async function fetchTodos(title: string): Promise<TodoInfo[]> {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}	?limit=100`, {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}?limit=100`, {
 			method: 'GET'
 		});
 		if (!response.ok) {
