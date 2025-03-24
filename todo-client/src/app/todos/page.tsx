@@ -3,10 +3,17 @@
 import { useState, useEffect } from 'react';
 import TodoApp from "./components/TodoApp";
 import { useNakamaUser } from "@/app/login/useNakamaUser";
-import { TodoTitle, fetchTodoTitles, createTodoTitle, deleteTodoTitle } from "@/app/api/todoApi";
+import { 
+	TodoTitleBase, 
+	TodoTitleInfo, 
+	fetchTodoTitles, 
+	createTodoTitle, 
+	updateTodoTitle,
+	deleteTodoTitle 
+} from "@/app/api/todoApi";
 
 export default function TodoPage() {
-	const [titles, setTitles] = useState<TodoTitle[]>([]);
+	const [titles, setTitles] = useState<TodoTitleInfo[]>([]);
 	const [newTitleInput, setNewTitleInput] = useState('');
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -17,8 +24,8 @@ export default function TodoPage() {
 		if (user?.id) {
 			setIsLoading(true);
 			fetchTodoTitles(user.id)
-				.then(data => {
-					setTitles(data);
+				.then(titleInfos => {
+					setTitles(titleInfos);
 				})
 				.catch(err => {
 					setError('Todo 목록을 불러오는데 실패했습니다');
@@ -38,11 +45,35 @@ export default function TodoPage() {
 		setError(null);
 		
 		try {
-			const newTitle = await createTodoTitle(newTitleInput, user.id);
-			setTitles(prev => [...prev, newTitle]);
+			const newTitleInfo = await createTodoTitle(newTitleInput, user.id);
+			setTitles(prev => [...prev, newTitleInfo]);
 			setNewTitleInput(''); // 입력 필드 초기화
 		} catch (err) {
 			setError('새 Todo 목록 생성에 실패했습니다');
+			console.error(err);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	// Todo 타이틀 이름 변경
+	const handleUpdateTodoTitle = async (titleInfo: TodoTitleInfo, newName: string) => {
+		if (!newName.trim()) return;
+		
+		setIsLoading(true);
+		setError(null);
+		
+		try {
+			const updatedTitleInfo = await updateTodoTitle({
+				...titleInfo,
+				name: newName
+			});
+			
+			setTitles(prev => 
+				prev.map(t => t.id === updatedTitleInfo.id ? updatedTitleInfo : t)
+			);
+		} catch (err) {
+			setError('Todo 목록 이름 변경에 실패했습니다');
 			console.error(err);
 		} finally {
 			setIsLoading(false);
@@ -100,16 +131,16 @@ export default function TodoPage() {
 						<p className="text-xl">아직 Todo 목록이 없습니다. 위에서 새 목록을 만들어보세요!</p>
 					</div>
 				) : (
-					titles.map((title) => (
-						<div key={title.id} className="relative">
+					titles.map((titleInfo) => (
+						<div key={titleInfo.id} className="relative">
 							<button
-								onClick={() => handleDeleteTodoTitle(title.id)}
+								onClick={() => handleDeleteTodoTitle(titleInfo.id)}
 								className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full z-10"
 								title="삭제"
 							>
 								×
 							</button>
-							<TodoApp title={title.name} />
+							<TodoApp title={titleInfo.name} />
 						</div>
 					))
 				)}

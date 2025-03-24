@@ -21,10 +21,25 @@ export interface TodoInfo extends TodoBase {
 	};
 }
 
-export interface TodoTitle {
+// 기본 TodoTitle 인터페이스
+export interface TodoTitleBase {
 	id: string;
 	name: string;
 	createTime?: string;
+}
+
+// 메타데이터를 포함한 TodoTitle 인터페이스
+export interface TodoTitleInfo extends TodoTitleBase {
+	meta?: {
+		collection: string;
+		create_time: string;
+		key: string;
+		permission_read: number;
+		permission_write: number;
+		update_time: string;
+		user_id: string;
+		version: string;
+	};
 }
 
 interface TodoItem {
@@ -72,6 +87,29 @@ export function createTodoInfoFromStorage(storageObject: NakamaStorageObject): T
 	}
 }
 
+// TodoTitleInfo 객체 생성 유틸리티 함수
+export function createTodoTitleInfoFromStorage(storageObject: NakamaStorageObject): TodoTitleInfo {
+	try {
+		const titleBase = JSON.parse(storageObject.value) as TodoTitleBase;
+		return {
+			...titleBase,
+			meta: {
+				collection: storageObject.collection,
+				create_time: storageObject.create_time,
+				key: storageObject.key,
+				permission_read: storageObject.permission_read,
+				permission_write: storageObject.permission_write,
+				update_time: storageObject.update_time,
+				user_id: storageObject.user_id,
+				version: storageObject.version
+			}
+		};
+	} catch (e) {
+		console.error('TodoTitle 파싱 오류:', e);
+		throw new Error('저장된 TodoTitle 항목을 파싱할 수 없습니다.');
+	}
+}
+
 // Todo 스토리지 데이터로부터 TodoInfo 배열 생성
 export function createTodoInfosFromStorage(storageObjects: NakamaStorageObject[]): TodoInfo[] {
 	return storageObjects
@@ -86,10 +124,24 @@ export function createTodoInfosFromStorage(storageObjects: NakamaStorageObject[]
 		.filter(Boolean) as TodoInfo[];
 }
 
+// TodoTitle 스토리지 데이터로부터 TodoTitleInfo 배열 생성
+export function createTodoTitleInfosFromStorage(storageObjects: NakamaStorageObject[]): TodoTitleInfo[] {
+	return storageObjects
+		.map(obj => {
+			try {
+				return createTodoTitleInfoFromStorage(obj);
+			} catch (e) {
+				console.error('TodoTitle 파싱 오류:', e, obj);
+				return null;
+			}
+		})
+		.filter(Boolean) as TodoTitleInfo[];
+}
+
 /**
  * Todo 타이틀 목록 조회
  */
-export async function fetchTodoTitles(userId: string) {
+export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> {
 	try {
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
 		
@@ -106,15 +158,8 @@ export async function fetchTodoTitles(userId: string) {
 			return [];
 		}
 		
-		// Nakama 스토리지 객체를 TodoTitle 객체로 변환
-		return data.objects.map((item: any) => {
-			try {
-				return JSON.parse(item.value);
-			} catch (e) {
-				console.error('Todo 타이틀 파싱 오류:', e);
-				return null;
-			}
-		}).filter(Boolean);
+		// NakamaStorageObject 배열을 TodoTitleInfo 배열로 변환
+		return createTodoTitleInfosFromStorage(data.objects);
 	} catch (error) {
 		console.error('Todo 타이틀 목록 조회 실패:', error);
 		throw error;
@@ -124,10 +169,10 @@ export async function fetchTodoTitles(userId: string) {
 /**
  * 새 Todo 타이틀 생성
  */
-export async function createTodoTitle(title: string, userId: string) {
+export async function createTodoTitle(title: string, userId: string): Promise<TodoTitleInfo> {
 	try {
 		const titleId = Date.now().toString();
-		const newTitle: TodoTitle = {
+		const newTitle: TodoTitleBase = {
 			id: titleId,
 			name: title,
 			createTime: new Date().toISOString()
@@ -154,10 +199,97 @@ export async function createTodoTitle(title: string, userId: string) {
 			throw new Error(errorMessage);
 		}
 		
-		const responseData = await response.json();
-		return { ...newTitle, version: responseData.objects?.[0]?.version || '*' };
+		const result = await response.json();
+		
+		// 응답에서 첫 번째 객체 가져오기
+		const storageObject = result.acks?.[0];
+		if (!storageObject) {
+			throw new Error('서버 응답에서 TodoTitle 항목을 찾을 수 없습니다');
+		}
+		
+		// 통합된 TodoTitleInfo 객체 반환
+		return {
+			...newTitle,
+			meta: {
+				collection: storageObject.collection,
+				create_time: storageObject.create_time,
+				key: storageObject.key,
+				permission_read: storageObject.permission_read,
+				permission_write: storageObject.permission_write,
+				update_time: storageObject.update_time,
+				user_id: storageObject.user_id,
+				version: storageObject.version
+			}
+		};
 	} catch (error) {
 		console.error('Todo 타이틀 생성 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * Todo 타이틀 업데이트
+ */
+export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTitleInfo> {
+	try {
+		// 버전 정보 가져오기
+		const version = todoTitle.meta?.version || '*';
+		
+		const todoTitleItem: TodoItem = {
+			collection: 'todo_titles',
+			key: todoTitle.id,
+			value: JSON.stringify({
+				id: todoTitle.id,
+				name: todoTitle.name,
+				createTime: todoTitle.createTime
+			}),
+			version: version,
+			permissionRead: 2,
+			permissionWrite: 1
+		};
+		
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
+			method: 'PUT',
+			body: JSON.stringify({ objects: [todoTitleItem] }),
+		});
+		
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const result = await response.json();
+		
+		// 응답에서 첫 번째 객체 가져오기
+		const storageObject = result.objects?.[0];
+		if (!storageObject) {
+			throw new Error('서버 응답에서 TodoTitle 항목을 찾을 수 없습니다');
+		}
+		
+		// meta가 없는 경우 기본값 생성
+		const currentMeta = todoTitle.meta || {
+			collection: 'todo_titles',
+			create_time: new Date().toISOString(),
+			key: todoTitle.id,
+			permission_read: 2,
+			permission_write: 1,
+			update_time: new Date().toISOString(),
+			user_id: '',
+			version: '*'
+		};
+		
+		// 메타데이터 업데이트
+		return {
+			...todoTitle,
+			meta: {
+				...currentMeta,
+				update_time: storageObject.update_time,
+				version: storageObject.version
+			}
+		};
+	} catch (error) {
+		console.error('TodoTitle 업데이트 실패:', error);
 		throw error;
 	}
 }
