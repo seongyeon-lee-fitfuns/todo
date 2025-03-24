@@ -66,7 +66,6 @@ export default function TodoPage() {
 		
 		try {
 			const result = await deleteTodoTitleWithNakamaApi(title);
-			console.log('result ------------', result);
 			setTitles(result);
 		} catch (err) {
 			setError('Todo 목록 삭제에 실패했습니다');
