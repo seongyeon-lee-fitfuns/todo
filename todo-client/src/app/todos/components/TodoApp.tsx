@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { SetStateAction, useEffect, useState } from 'react';
 import TodoForm from './TodoForm';
 import TodoList from './TodoList';
 import TodoStats from './TodoStats';
@@ -9,11 +9,9 @@ import {
 	TodoBase,
 	TodoInfo, 
 	fetchTodos, 
-	createTodo, 
-	updateTodo, 
-	deleteTodoItem,
 	updateTodoWithNakamaApi,
-	createTodoWithNakamaApi
+	createTodoWithNakamaApi,
+	deleteTodoWithNakamaApi
 } from '@/app/api/todoApi';
 
 export default function TodoApp({ title }: { title: string }) {
@@ -106,7 +104,7 @@ export default function TodoApp({ title }: { title: string }) {
 		setError(null);
 		setIsLoading(true);
 		
-		deleteTodoItem(title, id.toString(), todos.find(t => t.id === id)?.meta?.version || '')
+		deleteTodoWithNakamaApi(title, id.toString(), todos.find(t => t.id === id)?.meta?.version || '')
 			.then(() => {
 				// 로컬 상태에서 삭제
 				setTodos(todos.filter(todo => todo.id !== id));
@@ -117,6 +115,7 @@ export default function TodoApp({ title }: { title: string }) {
 			.finally(() => {
 				setIsLoading(false);
 			});
+		
 	};
 
 	// TodoList 및 TodoStats에 전달할 기본 Todo 데이터 추출

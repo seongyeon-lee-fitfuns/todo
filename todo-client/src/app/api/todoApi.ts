@@ -696,7 +696,7 @@ export async function updateTodoWithNakamaApi(todo: TodoInfo, collection: string
 		
 		// RPC 호출용 객체 생성
 		const rpcPayload = {
-			todoItem: {
+			objects: {
 				collection: collection,
 				key: todo.id.toString(),
 				value: JSON.stringify({
@@ -817,7 +817,7 @@ export async function deleteTodoWithNakamaApi(collection: string, todoId: string
 	try {
 		// RPC 호출용 객체 생성
 		const rpcPayload = {
-			deleteObject: {
+			objects: {
 				collection: collection,
 				key: todoId,
 				version: version
