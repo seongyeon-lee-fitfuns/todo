@@ -11,7 +11,8 @@ import {
 	fetchTodos, 
 	createTodo, 
 	updateTodo, 
-	deleteTodoItem
+	deleteTodoItem,
+	updateTodoWithNakamaApi
 } from '@/app/api/todoApi';
 
 export default function TodoApp({ title }: { title: string }) {
@@ -80,7 +81,7 @@ export default function TodoApp({ title }: { title: string }) {
 		setIsLoading(true);
 		
 		// 서버에 업데이트
-		updateTodo(updatedTodo, title)
+		updateTodoWithNakamaApi(updatedTodo, title)
 			.then(updatedTodoInfo => {
 				// 상태 업데이트
 				setTodos(prevTodos => 

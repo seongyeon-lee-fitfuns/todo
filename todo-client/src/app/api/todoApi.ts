@@ -143,7 +143,7 @@ export function createTodoTitleInfosFromStorage(storageObjects: NakamaStorageObj
  */
 export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
 		
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => null);
@@ -228,7 +228,7 @@ export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> 
 export async function createTodoTitle(title: string, userId: string): Promise<TodoTitleInfo> {
 	try {
 		// 먼저 기존 todo_titles 컬렉션이 있는지 확인
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
 		
 		if (!checkResponse.ok) {
 			const errorData = await checkResponse.json().catch(() => null);
@@ -357,7 +357,7 @@ export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTit
 		}
 		
 		// 먼저 기존 데이터 조회
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${todoTitle.meta.user_id}&limit=100`);
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
 		
 		if (!checkResponse.ok) {
 			const errorData = await checkResponse.json().catch(() => null);
@@ -451,7 +451,7 @@ export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTit
 export async function deleteTodoTitle(titleId: string, userId: string) {
 	try {
 		// 먼저 기존 데이터를 가져옴
-		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?limit=100`);
 		
 		if (!checkResponse.ok) {
 			const errorData = await checkResponse.json().catch(() => null);
@@ -528,7 +528,7 @@ export async function deleteTodoTitle(titleId: string, userId: string) {
  */
 export async function fetchTodos(title: string, userId: string): Promise<TodoInfo[]> {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}/${userId}?limit=100`, {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}	?limit=100`, {
 			method: 'GET'
 		});
 		if (!response.ok) {
@@ -655,6 +655,8 @@ export async function updateTodo(todo: TodoInfo, title: string): Promise<TodoInf
 			user_id: '',
 			version: '*'
 		};
+		console.log('version', storageObject.version);
+		
 		
 		// 메타데이터 업데이트
 		return {
@@ -696,6 +698,39 @@ export async function deleteTodoItem(collection: string, todoId: string, version
 		return true;
 	} catch (error) {
 		console.error('Todo 삭제 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * Nakama API를 사용하여 Todo 항목 업데이트/생성
+ * 새로 만든 /api/nakama-todo 엔드포인트를 활용
+ */
+export async function updateTodoWithNakamaApi(todo: TodoInfo, collection: string): Promise<TodoInfo> {
+	try {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/rpc/UpdateTodo`, {
+			method: 'POST',
+			body: JSON.stringify({
+				collection: collection,
+				todoItem: todo
+			}),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.error || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const result = await response.json();
+		
+		if (!result.success || !result.data) {
+			throw new Error('Todo 업데이트에 실패했습니다');
+		}
+
+		return result.data as TodoInfo;
+	} catch (error) {
+		console.error('Nakama Todo API 요청 실패:', error);
 		throw error;
 	}
 }
