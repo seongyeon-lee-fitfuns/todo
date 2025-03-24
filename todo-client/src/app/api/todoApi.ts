@@ -6,6 +6,12 @@ export interface Todo {
 	completed: boolean;
 }
 
+export interface TodoTitle {
+	id: string;
+	name: string;
+	createTime?: string;
+}
+
 interface TodoItem {
 	collection: string;
 	key: string;
@@ -16,6 +22,103 @@ interface TodoItem {
 }
 
 type TodoReq = TodoItem[];
+
+/**
+ * Todo 타이틀 목록 조회
+ */
+export async function fetchTodoTitles(userId: string) {
+	try {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const data = await response.json();
+		
+		// 응답 데이터가 없으면 빈 배열 반환
+		if (!data.objects || data.objects.length === 0) {
+			return [];
+		}
+		
+		// Nakama 스토리지 객체를 TodoTitle 객체로 변환
+		return data.objects.map((item: any) => {
+			try {
+				return JSON.parse(item.value);
+			} catch (e) {
+				console.error('Todo 타이틀 파싱 오류:', e);
+				return null;
+			}
+		}).filter(Boolean);
+	} catch (error) {
+		console.error('Todo 타이틀 목록 조회 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * 새 Todo 타이틀 생성
+ */
+export async function createTodoTitle(title: string, userId: string) {
+	try {
+		const titleId = Date.now().toString();
+		const newTitle: TodoTitle = {
+			id: titleId,
+			name: title,
+			createTime: new Date().toISOString()
+		};
+		
+		const todoTitleItem: TodoItem = {
+			collection: 'todo_titles',
+			key: titleId,
+			value: JSON.stringify(newTitle),
+			version: '*',
+			permissionRead: 2, // 소유자 및 인증된 사용자가 읽기 가능
+			permissionWrite: 1  // 소유자만 쓰기 가능
+		};
+		
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
+			method: 'PUT',
+			body: JSON.stringify({ objects: [todoTitleItem] }),
+		});
+		
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const responseData = await response.json();
+		return { ...newTitle, version: responseData.objects?.[0]?.version || '*' };
+	} catch (error) {
+		console.error('Todo 타이틀 생성 실패:', error);
+		throw error;
+	}
+}
+
+/**
+ * Todo 타이틀 삭제
+ */
+export async function deleteTodoTitle(titleId: string) {
+	try {
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles/${titleId}`, {
+			method: 'DELETE'
+		});
+		
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		return true;
+	} catch (error) {
+		console.error('Todo 타이틀 삭제 실패:', error);
+		throw error;
+	}
+}
 
 /**
  * Nakama 스토리지에서 Todo 목록 조회
