@@ -69,7 +69,7 @@ export function useNakamaUser(): NakamaUserContext {
       const timeout = new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error('요청 시간이 초과되었습니다 (3초)'));
-        }, 300);
+        }, 3000);
       });
 
       // 실제 API 요청
