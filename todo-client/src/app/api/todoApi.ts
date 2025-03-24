@@ -158,8 +158,64 @@ export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> 
 			return [];
 		}
 		
-		// NakamaStorageObject 배열을 TodoTitleInfo 배열로 변환
-		return createTodoTitleInfosFromStorage(data.objects);
+		try {
+			// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
+			const firstObject = data.objects[0];
+			const parsedValue = JSON.parse(firstObject.value);
+			
+			// titles 배열이 있는 경우
+			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
+				// 각 항목에 메타데이터 추가
+				return parsedValue.titles.map((title: TodoTitleBase) => ({
+					...title,
+					meta: {
+						collection: firstObject.collection,
+						create_time: firstObject.create_time,
+						key: firstObject.key,
+						permission_read: firstObject.permission_read,
+						permission_write: firstObject.permission_write,
+						update_time: firstObject.update_time,
+						user_id: firstObject.user_id,
+						version: firstObject.version
+					}
+				}));
+			} 
+			
+			// titles 배열이 없지만 직접 배열이 저장된 경우 (이전 형식 호환)
+			if (Array.isArray(parsedValue)) {
+				return parsedValue.map((title: TodoTitleBase) => ({
+					...title,
+					meta: {
+						collection: firstObject.collection,
+						create_time: firstObject.create_time,
+						key: firstObject.key,
+						permission_read: firstObject.permission_read,
+						permission_write: firstObject.permission_write,
+						update_time: firstObject.update_time,
+						user_id: firstObject.user_id,
+						version: firstObject.version
+					}
+				}));
+			}
+			
+			// 단일 객체인 경우 배열로 변환
+			return [{
+				...parsedValue,
+				meta: {
+					collection: firstObject.collection,
+					create_time: firstObject.create_time,
+					key: firstObject.key,
+					permission_read: firstObject.permission_read,
+					permission_write: firstObject.permission_write,
+					update_time: firstObject.update_time,
+					user_id: firstObject.user_id,
+					version: firstObject.version
+				}
+			}];
+		} catch (e) {
+			console.error('Todo 타이틀 파싱 실패:', e);
+			return [];
+		}
 	} catch (error) {
 		console.error('Todo 타이틀 목록 조회 실패:', error);
 		throw error;
@@ -171,6 +227,19 @@ export async function fetchTodoTitles(userId: string): Promise<TodoTitleInfo[]> 
  */
 export async function createTodoTitle(title: string, userId: string): Promise<TodoTitleInfo> {
 	try {
+		// 먼저 기존 todo_titles 컬렉션이 있는지 확인
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		
+		if (!checkResponse.ok) {
+			const errorData = await checkResponse.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const checkData = await checkResponse.json();
+		const collectionExists = checkData.objects && checkData.objects.length > 0;
+		
+		// 새 타이틀 생성
 		const titleId = Date.now().toString();
 		const newTitle: TodoTitleBase = {
 			id: titleId,
@@ -178,19 +247,70 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
 			createTime: new Date().toISOString()
 		};
 		
+		let key, version;
+		let existingTitles: TodoTitleInfo[] = [];
+		
+		// 기존 컬렉션이 있으면 데이터를 확인하고 새 타이틀 항목을 추가
+		if (collectionExists) {
+			try {
+				// 첫 번째 객체 사용 (todo_titles 컬렉션이 있는 경우)
+				const firstObject = checkData.objects[0];
+				const existingData = JSON.parse(firstObject.value);
+				
+				// 이미 타이틀 목록이 배열 형태로 저장되어 있는 경우
+				if (Array.isArray(existingData)) {
+					existingTitles = existingData;
+				} else if (existingData.titles && Array.isArray(existingData.titles)) {
+					existingTitles = existingData.titles;
+				} else {
+					// 단일 객체인 경우, 배열로 변환
+					existingTitles = [existingData];
+				}
+				
+				// 키와 버전 저장
+				key = firstObject.key;
+				version = firstObject.version;
+			} catch (e) {
+				console.error('기존 todo_titles 파싱 실패:', e);
+				// 파싱 실패해도 계속 진행
+				key = titleId;
+				version = '*';
+				existingTitles = [];
+			}
+		} else {
+			// 컬렉션이 없는 경우 기본값 설정
+			key = titleId;
+			version = '*';
+		}
+		
+		// 이미 존재하는 타이틀인지 확인 (id로 비교)
+		const isDuplicate = existingTitles.some(item => 
+			(item.id === newTitle.id) || (item.name && item.name === newTitle.name)
+		);
+		
+		if (!isDuplicate) {
+			// 중복이 아니면 추가
+			existingTitles.push(newTitle);
+		}
+		
+		// JSON 형태로 titles 배열을 포함한 객체 생성
+		const valueObject = {
+			titles: existingTitles
+		};
+		
+		// todo_titles 컬렉션 항목 생성
 		const todoTitleItem: TodoItem = {
 			collection: 'todo_titles',
-			key: titleId,
-			value: JSON.stringify(newTitle),
-			version: '*',
+			key: key,
+			value: JSON.stringify(valueObject), // 객체를 JSON 문자열로 변환
+			version: version,
 			permissionRead: 2, // 소유자 및 인증된 사용자가 읽기 가능
 			permissionWrite: 1  // 소유자만 쓰기 가능
 		};
 		
-		// TODO: 추후 rpc를 활용하여 중복 체크하면 좋을 듯
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
 			method: 'PUT',
-			body: JSON.stringify({ objects: [todoTitleItem] }),
+			body: JSON.stringify({ objects: [todoTitleItem] })
 		});
 		
 		if (!response.ok) {
@@ -232,27 +352,72 @@ export async function createTodoTitle(title: string, userId: string): Promise<To
  */
 export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTitleInfo> {
 	try {
-		// 버전 정보 가져오기
-		const version = todoTitle.meta?.version || '*';
+		if (!todoTitle.meta) {
+			throw new Error('메타데이터가 없는 TodoTitle은 업데이트할 수 없습니다.');
+		}
+		
+		// 먼저 기존 데이터 조회
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${todoTitle.meta.user_id}&limit=100`);
+		
+		if (!checkResponse.ok) {
+			const errorData = await checkResponse.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const checkData = await checkResponse.json();
+		const collectionExists = checkData.objects && checkData.objects.length > 0;
+		
+		if (!collectionExists) {
+			throw new Error('기존 Todo 타이틀 데이터를 찾을 수 없습니다.');
+		}
+		
+		// 기존 데이터에서 업데이트하려는 항목 제외하고 나머지 유지
+		const firstObject = checkData.objects[0];
+		let updatedTitles: TodoTitleBase[] = [];
+		
+		try {
+			const parsedValue = JSON.parse(firstObject.value);
+			
+			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
+				// titles 배열이 있으면 해당 항목 업데이트
+				updatedTitles = parsedValue.titles.map((item: TodoTitleBase) => 
+					item.id === todoTitle.id ? { id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime } : item
+				);
+			} else if (Array.isArray(parsedValue)) {
+				// 배열 형식으로 저장된 경우
+				updatedTitles = parsedValue.map((item: TodoTitleBase) => 
+					item.id === todoTitle.id ? { id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime } : item
+				);
+			} else {
+				// 단일 항목인 경우, 배열로 변환
+				updatedTitles = [{ id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime }];
+			}
+		} catch (e) {
+			console.error('기존 todo_titles 파싱 실패:', e);
+			// 파싱 실패시 해당 항목만 포함
+			updatedTitles = [{ id: todoTitle.id, name: todoTitle.name, createTime: todoTitle.createTime }];
+		}
+		
+		// JSON 형태로 titles 배열을 포함한 객체 생성
+		const valueObject = {
+			titles: updatedTitles
+		};
 		
 		const todoTitleItem: TodoItem = {
-			collection: 'todo_titles',
-			key: todoTitle.id,
-			value: JSON.stringify({
-				id: todoTitle.id,
-				name: todoTitle.name,
-				createTime: todoTitle.createTime
-			}),
-			version: version,
-			permissionRead: 2,
-			permissionWrite: 1
+			collection: todoTitle.meta.collection,
+			key: todoTitle.meta.key,
+			value: JSON.stringify(valueObject),
+			version: todoTitle.meta.version,
+			permissionRead: todoTitle.meta.permission_read,
+			permissionWrite: todoTitle.meta.permission_write
 		};
 		
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
 			method: 'PUT',
 			body: JSON.stringify({ objects: [todoTitleItem] }),
 		});
-		
+
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => null);
 			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
@@ -260,30 +425,16 @@ export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTit
 		}
 		
 		const result = await response.json();
+		const storageObject = result.acks?.[0];
 		
-		// 응답에서 첫 번째 객체 가져오기
-		const storageObject = result.objects?.[0];
 		if (!storageObject) {
 			throw new Error('서버 응답에서 TodoTitle 항목을 찾을 수 없습니다');
 		}
 		
-		// meta가 없는 경우 기본값 생성
-		const currentMeta = todoTitle.meta || {
-			collection: 'todo_titles',
-			create_time: new Date().toISOString(),
-			key: todoTitle.id,
-			permission_read: 2,
-			permission_write: 1,
-			update_time: new Date().toISOString(),
-			user_id: '',
-			version: '*'
-		};
-		
-		// 메타데이터 업데이트
 		return {
 			...todoTitle,
 			meta: {
-				...currentMeta,
+				...todoTitle.meta,
 				update_time: storageObject.update_time,
 				version: storageObject.version
 			}
@@ -297,10 +448,64 @@ export async function updateTodoTitle(todoTitle: TodoTitleInfo): Promise<TodoTit
 /**
  * Todo 타이틀 삭제
  */
-export async function deleteTodoTitle(titleId: string) {
+export async function deleteTodoTitle(titleId: string, userId: string) {
 	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles/${titleId}`, {
-			method: 'DELETE'
+		// 먼저 기존 데이터를 가져옴
+		const checkResponse = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/todo_titles?user_id=${userId}&limit=100`);
+		
+		if (!checkResponse.ok) {
+			const errorData = await checkResponse.json().catch(() => null);
+			const errorMessage = errorData?.message || `요청 실패: ${checkResponse.status}`;
+			throw new Error(errorMessage);
+		}
+		
+		const checkData = await checkResponse.json();
+		const collectionExists = checkData.objects && checkData.objects.length > 0;
+		
+		if (!collectionExists) {
+			throw new Error('삭제할 Todo 타이틀 데이터를 찾을 수 없습니다.');
+		}
+		
+		// 기존 데이터에서 삭제할 항목을 제거
+		const firstObject = checkData.objects[0];
+		let updatedTitles: TodoTitleBase[] = [];
+		
+		try {
+			const parsedValue = JSON.parse(firstObject.value);
+			
+			if (parsedValue.titles && Array.isArray(parsedValue.titles)) {
+				// titles 배열에서 해당 ID를 제외
+				updatedTitles = parsedValue.titles.filter((item: TodoTitleBase) => item.id !== titleId);
+			} else if (Array.isArray(parsedValue)) {
+				// 배열 형식인 경우 해당 ID를 제외
+				updatedTitles = parsedValue.filter((item: TodoTitleBase) => item.id !== titleId);
+			} else {
+				// 단일 항목이면서 ID가 일치하면 빈 배열 반환, 아니면 그대로 유지
+				updatedTitles = parsedValue.id === titleId ? [] : [parsedValue];
+			}
+		} catch (e) {
+			console.error('기존 todo_titles 파싱 실패:', e);
+			return false;
+		}
+		
+		// 새로운 값 객체 생성
+		const valueObject = {
+			titles: updatedTitles
+		};
+		
+		// todo_titles 컬렉션 항목 업데이트
+		const todoTitleItem: TodoItem = {
+			collection: firstObject.collection,
+			key: firstObject.key,
+			value: JSON.stringify(valueObject),
+			version: firstObject.version,
+			permissionRead: firstObject.permission_read,
+			permissionWrite: firstObject.permission_write
+		};
+		
+		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
+			method: 'PUT',
+			body: JSON.stringify({ objects: [todoTitleItem] })
 		});
 		
 		if (!response.ok) {

@@ -82,13 +82,13 @@ export default function TodoPage() {
 
 	// Todo 타이틀 삭제
 	const handleDeleteTodoTitle = async (id: string) => {
-		if (!id) return;
+		if (!id || !user?.id) return;
 		
 		setIsLoading(true);
 		setError(null);
 		
 		try {
-			await deleteTodoTitle(id);
+			await deleteTodoTitle(id, user.id);
 			setTitles(prev => prev.filter(title => title.id !== id));
 		} catch (err) {
 			setError('Todo 목록 삭제에 실패했습니다');
