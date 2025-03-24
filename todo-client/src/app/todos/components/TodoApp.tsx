@@ -6,45 +6,33 @@
 	import TodoStats from './TodoStats';
 	import { useNakamaUser } from '@/app/login/useNakamaUser';
 	import { 
-		Todo, 
+		TodoBase,
+		TodoInfo, 
 		fetchTodos, 
 		createTodo, 
 		updateTodo, 
-		deleteTodoItem, 
-		fetchTodoVersion 
+		deleteTodoItem
 	} from '@/app/api/todoApi';
 
 	export default function TodoApp({ title }: { title: string }) {
-		const [todos, setTodos] = useState<Todo[]>([]);
+		const [todos, setTodos] = useState<TodoInfo[]>([]);
 		const [error, setError] = useState<string | null>(null);
 		const [isLoading, setIsLoading] = useState(true);
 		const { user } = useNakamaUser();
-		// 버전 정보 저장 (key: todoId, value: version)
-		const [todoVersions, setTodoVersions] = useState<Record<string, string>>({});
 
 		// 초기 Todo 목록 로드
 		useEffect(() => {
 			if (user) {
 				fetchTodos(title, user?.id || '')
-					.then(data => {
-						setTodos(data);
-					
-					// 버전 정보 초기화
-					const versions: Record<string, string> = {};
-					data.forEach((todo: Todo) => {
-						fetchTodoVersion(title, todo.id.toString())
-							.then(version => {
-								versions[todo.id] = version;
-							});
+					.then(todoInfos => {
+						setTodos(todoInfos);
+					})
+					.catch(err => {
+						setError(err instanceof Error ? err.message : 'Todo 목록을 불러오는데 실패했습니다');
+					})
+					.finally(() => {
+						setIsLoading(false);
 					});
-					setTodoVersions(versions);
-				})
-				.catch(err => {
-					setError(err instanceof Error ? err.message : 'Todo 목록을 불러오는데 실패했습니다');
-				})
-				.finally(() => {
-					setIsLoading(false);
-				});
 			}
 		}, [user, title]);
 
@@ -52,7 +40,7 @@
 		const addTodo = (text: string) => {
 			if (text.trim() === '') return;
 			
-			const newTodo: Todo = {
+			const newTodo: TodoBase = {
 				id: Date.now(),
 				text: text,
 				completed: false
@@ -62,16 +50,9 @@
 			setIsLoading(true);
 			
 			createTodo(newTodo, title)
-				.then(response => {
-					// 응답에서 버전 정보 추출
-					const newVersion = response.objects?.[0]?.version || '*';
-					
+				.then(todoInfo => {
 					// 상태 업데이트
-					setTodos(prevTodos => [...prevTodos, newTodo]);
-					setTodoVersions(prev => ({
-						...prev,
-						[newTodo.id]: newVersion
-					}));
+					setTodos(prevTodos => [...prevTodos, todoInfo]);
 				})
 				.catch(err => {
 					setError(err instanceof Error ? err.message : '할 일을 저장하는데 실패했습니다');
@@ -85,29 +66,26 @@
 		const toggleComplete = (id: number) => {
 			setError(null);
 			
-			// 현재 todo와 version 찾기
-			const todo = todos.find(t => t.id === id);
-			const version = todoVersions[id];
+			// 현재 todo 찾기
+			const todoToUpdate = todos.find(t => t.id === id);
 			
-			if (!todo) return;
+			if (!todoToUpdate) return;
 			
 			// 새 상태 생성
-			const updatedTodo = { ...todo, completed: !todo.completed };
+			const updatedTodo: TodoInfo = {
+				...todoToUpdate,
+				completed: !todoToUpdate.completed
+			};
 			
 			setIsLoading(true);
 			
 			// 서버에 업데이트
-			updateTodo(updatedTodo, version, title)
-				.then(response => {
-					// 응답에서 새 버전 정보 추출
-					const newVersion = response.objects?.[0]?.version || version;
-					
+			updateTodo(updatedTodo, title)
+				.then(updatedTodoInfo => {
 					// 상태 업데이트
-					setTodos(todos.map(t => t.id === id ? updatedTodo : t));
-					setTodoVersions(prev => ({
-						...prev,
-						[id]: newVersion
-					}));
+					setTodos(prevTodos => 
+						prevTodos.map(t => t.id === id ? updatedTodoInfo : t)
+					);
 				})
 				.catch(err => {
 					setError(err instanceof Error ? err.message : '할 일 상태 변경에 실패했습니다');
@@ -130,11 +108,6 @@
 				.then(() => {
 					// 로컬 상태에서 삭제
 					setTodos(todos.filter(todo => todo.id !== id));
-					
-					// 버전 정보에서 제거
-					const newVersions = { ...todoVersions };
-					delete newVersions[id];
-					setTodoVersions(newVersions);
 				})
 				.catch(err => {
 					setError(err instanceof Error ? err.message : '할 일 삭제에 실패했습니다');
@@ -143,6 +116,9 @@
 					setIsLoading(false);
 				});
 		};
+
+		// TodoList 및 TodoStats에 전달할 기본 Todo 데이터 추출
+		const basicTodos: TodoBase[] = todos.map(({ id, text, completed }) => ({ id, text, completed }));
 
 		return (
 			<div className="max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white/20">
@@ -163,12 +139,12 @@
 				<TodoForm onAddTodo={addTodo} />
 				
 				<TodoList 
-					todos={todos} 
+					todos={basicTodos} 
 					onToggleComplete={toggleComplete} 
 					onDeleteTodo={handleDeleteTodo} 
 				/>
 				
-				{todos.length > 0 && <TodoStats todos={todos} />}
+				{basicTodos.length > 0 && <TodoStats todos={basicTodos} />}
 			</div>
 		);
 	} 

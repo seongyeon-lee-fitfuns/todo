@@ -1,9 +1,24 @@
 import { fetchWithAuth } from './fetchWithAuth';
 
-export interface Todo {
+// 기본 Todo 항목 인터페이스
+export interface TodoBase {
 	id: number;
 	text: string;
 	completed: boolean;
+}
+
+// Nakama 스토리지에서 반환되는 메타데이터 포함 Todo 인터페이스
+export interface TodoInfo extends TodoBase {
+	meta?: {
+		collection: string;
+		create_time: string;
+		key: string;
+		permission_read: number;
+		permission_write: number;
+		update_time: string;
+		user_id: string;
+		version: string;
+	};
 }
 
 export interface TodoTitle {
@@ -21,7 +36,55 @@ interface TodoItem {
 	permissionWrite: number;
 }
 
-type TodoReq = TodoItem[];
+// Nakama 스토리지 응답 인터페이스
+export interface NakamaStorageObject {
+	collection: string;
+	create_time: string;
+	key: string;
+	permission_read: number;
+	permission_write: number;
+	update_time: string;
+	user_id: string;
+	value: string;
+	version: string;
+}
+
+// TodoInfo 객체 생성 유틸리티 함수
+export function createTodoInfoFromStorage(storageObject: NakamaStorageObject): TodoInfo {
+	try {
+		const todoBase = JSON.parse(storageObject.value) as TodoBase;
+		return {
+			...todoBase,
+			meta: {
+				collection: storageObject.collection,
+				create_time: storageObject.create_time,
+				key: storageObject.key,
+				permission_read: storageObject.permission_read,
+				permission_write: storageObject.permission_write,
+				update_time: storageObject.update_time,
+				user_id: storageObject.user_id,
+				version: storageObject.version
+			}
+		};
+	} catch (e) {
+		console.error('Todo 파싱 오류:', e);
+		throw new Error('저장된 Todo 항목을 파싱할 수 없습니다.');
+	}
+}
+
+// Todo 스토리지 데이터로부터 TodoInfo 배열 생성
+export function createTodoInfosFromStorage(storageObjects: NakamaStorageObject[]): TodoInfo[] {
+	return storageObjects
+		.map(obj => {
+			try {
+				return createTodoInfoFromStorage(obj);
+			} catch (e) {
+				console.error('Todo 파싱 오류:', e, obj);
+				return null;
+			}
+		})
+		.filter(Boolean) as TodoInfo[];
+}
 
 /**
  * Todo 타이틀 목록 조회
@@ -79,6 +142,7 @@ export async function createTodoTitle(title: string, userId: string) {
 			permissionWrite: 1  // 소유자만 쓰기 가능
 		};
 		
+		// TODO: 추후 rpc를 활용하여 중복 체크하면 좋을 듯
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage`, {
 			method: 'PUT',
 			body: JSON.stringify({ objects: [todoTitleItem] }),
@@ -123,7 +187,7 @@ export async function deleteTodoTitle(titleId: string) {
 /**
  * Nakama 스토리지에서 Todo 목록 조회
  */
-export async function fetchTodos(title: string, userId: string) {
+export async function fetchTodos(title: string, userId: string): Promise<TodoInfo[]> {
 	try {
 		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${title}/${userId}?limit=100`, {
 			method: 'GET'
@@ -135,18 +199,12 @@ export async function fetchTodos(title: string, userId: string) {
 		}
 		
 		const data = await response.json();
-		console.log('data', data);
+		if (!data.objects || !Array.isArray(data.objects)) {
+			return [];
+		}
 		
-		// Nakama 스토리지 객체를 Todo 객체로 변환
-		return data.objects?.map((item: any) => {
-			try {
-				return JSON.parse(item.value);
-			} catch (e) {
-				console.error('Todo 파싱 오류:', e);
-				return null;
-			}
-		}).filter(Boolean) || [];
-
+		// NakamaStorageObject 배열을 TodoInfo 배열로 변환
+		return createTodoInfosFromStorage(data.objects);
 	} catch (error) {
 		console.error('Todo 목록 조회 실패:', error);
 		throw error;
@@ -156,7 +214,7 @@ export async function fetchTodos(title: string, userId: string) {
 /**
  * Todo 항목 생성
  */
-export async function createTodo(todo: Todo, title: string) {
+export async function createTodo(todo: TodoBase, title: string): Promise<TodoInfo> {
 	try {
 		const todoItem: TodoItem = {
 			collection: title,
@@ -178,7 +236,28 @@ export async function createTodo(todo: Todo, title: string) {
 			throw new Error(errorMessage);
 		}
 		
-		return await response.json();
+		const result = await response.json();
+		
+		// 응답에서 첫 번째 객체 가져오기
+		const storageObject = result.objects?.[0];
+		if (!storageObject) {
+			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
+		}
+		
+		// 통합된 TodoInfo 객체 반환
+		return {
+			...todo,
+			meta: {
+				collection: storageObject.collection,
+				create_time: storageObject.create_time,
+				key: storageObject.key,
+				permission_read: storageObject.permission_read,
+				permission_write: storageObject.permission_write,
+				update_time: storageObject.update_time,
+				user_id: storageObject.user_id,
+				version: storageObject.version
+			}
+		};
 	} catch (error) {
 		console.error('Todo 생성 실패:', error);
 		throw error;
@@ -188,13 +267,20 @@ export async function createTodo(todo: Todo, title: string) {
 /**
  * Todo 항목 업데이트
  */
-export async function updateTodo(todo: Todo, version: string, title: string) {
+export async function updateTodo(todo: TodoInfo, title: string): Promise<TodoInfo> {
 	try {
+		// 버전 정보 가져오기
+		const version = todo.meta?.version || '*';
+		
 		const todoItem: TodoItem = {
 			collection: title,
 			key: todo.id.toString(),
-			value: JSON.stringify(todo),
-			version: version, // 버전 정보 필요
+			value: JSON.stringify({
+				id: todo.id,
+				text: todo.text,
+				completed: todo.completed
+			}),
+			version: version,
 			permissionRead: 2,
 			permissionWrite: 1
 		};
@@ -210,7 +296,35 @@ export async function updateTodo(todo: Todo, version: string, title: string) {
 			throw new Error(errorMessage);
 		}
 		
-		return await response.json();
+		const result = await response.json();
+		
+		// 응답에서 첫 번째 객체 가져오기
+		const storageObject = result.objects?.[0];
+		if (!storageObject) {
+			throw new Error('서버 응답에서 Todo 항목을 찾을 수 없습니다');
+		}
+		
+		// meta가 없는 경우 기본값 생성
+		const currentMeta = todo.meta || {
+			collection: title,
+			create_time: new Date().toISOString(),
+			key: todo.id.toString(),
+			permission_read: 2,
+			permission_write: 1,
+			update_time: new Date().toISOString(),
+			user_id: '',
+			version: '*'
+		};
+		
+		// 메타데이터 업데이트
+		return {
+			...todo,
+			meta: {
+				...currentMeta,
+				update_time: storageObject.update_time,
+				version: storageObject.version
+			}
+		};
 	} catch (error) {
 		console.error('Todo 업데이트 실패:', error);
 		throw error;
@@ -238,24 +352,3 @@ export async function deleteTodoItem(collection: string, todoId: string) {
 		throw error;
 	}
 }
-
-/**
- * Todo 버전 정보 조회
- */
-export async function fetchTodoVersion(collection: string, todoId: string) {
-	try {
-		const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_NAKAMA_URL}/v2/storage/${collection}/${todoId}`);
-		
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.message || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
-		}
-		
-		const data = await response.json();
-		return data.objects[0]?.version || '*';
-	} catch (error) {
-		console.error('Todo 버전 조회 실패:', error);
-		return '*'; // 조회 실패 시 새 버전으로 간주
-	}
-} 
