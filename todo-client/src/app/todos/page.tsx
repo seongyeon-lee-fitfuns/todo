@@ -102,13 +102,18 @@ export default function TodoPage() {
 			</div>
 
 			{/* Todo 앱 목록 */}
+
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{(titles.length === 0 || Object.keys(titles).length === 0) && !isLoading ? (
+				{!Array.isArray(titles) ? (
+					<div className="col-span-full text-center py-12 text-white">
+						<p className="text-xl">Todo 목록 데이터가 올바르지 않습니다.</p>
+					</div>
+				) : titles.length === 0 && !isLoading ? (
 					<div className="col-span-full text-center py-12 text-white">
 						<p className="text-xl">아직 Todo 목록이 없습니다. 위에서 새 목록을 만들어보세요!</p>
 					</div>
 				) : (
-					titles?.map((title) => (
+					titles.map((title) => (
 						<div key={title} className="relative">
 							<button
 								onClick={() => handleDeleteTodoTitle(title)}

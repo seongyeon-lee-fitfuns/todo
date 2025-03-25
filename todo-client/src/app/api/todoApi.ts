@@ -151,7 +151,11 @@ export async function fetchTodoTitlesWithNakamaApi() {
 		throw new Error(errorMessage);
 	}
 	const result = await response.json();
-	return JSON.parse(result.payload).titles;
+	const res = JSON.parse(result.payload).titles;
+	if (!res || Object.keys(res).length === 0) {
+		return [];
+	}
+	return res;
 }
 
 export async function createTodoTitleWithNakamaApi(title: string) {
