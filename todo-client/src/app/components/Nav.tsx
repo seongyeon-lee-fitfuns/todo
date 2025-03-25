@@ -31,6 +31,7 @@ export default function Nav() {
         <div className="hidden md:flex space-x-6 items-center">
           <Link href="/" className="hover:text-gray-300 transition duration-200">홈</Link>
           <Link href="/todos" className="hover:text-gray-300 transition duration-200">할 일 목록</Link>
+          <Link href="/groups" className="hover:text-gray-300 transition duration-200">그룹</Link>
           {nakamaLoading ? (
             <div className="w-24 h-8 bg-gray-700 animate-pulse rounded"></div>
           ) : user ? (
@@ -88,6 +89,7 @@ export default function Nav() {
           <div className="flex flex-col space-y-4">
             <Link href="/" className="hover:text-gray-300 py-2">홈</Link>
             <Link href="/todos" className="hover:text-gray-300 py-2">할 일 목록</Link>
+            <Link href="/groups" className="hover:text-gray-300 py-2">그룹</Link>
             {nakamaLoading ? (
               <div className="w-full h-10 bg-gray-600 animate-pulse rounded"></div>
             ) : user ? (
