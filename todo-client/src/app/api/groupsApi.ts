@@ -1,5 +1,6 @@
 // 그룹 인터페이스 정의
 export interface NakamaGroup {
+  [x: string]: any;
   id: string;
   creator_id: string;
   name: string;
@@ -224,7 +225,7 @@ export async function fetchGroupsWithMembership(
     
     console.log('내 그룹 목록:', myGroups);
     
-    const myGroupIds = new Set(myGroups.map(group => group.id));
+    const myGroupIds = new Set(myGroups.map(e => e.group.id));
     console.log('내 그룹 ID 목록:', Array.from(myGroupIds));
     
     // 2. 모든 그룹 목록 가져오기

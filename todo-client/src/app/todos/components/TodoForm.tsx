@@ -24,7 +24,8 @@ export default function TodoForm({ onAddTodo }: TodoFormProps) {
 			onChange={(e) => setInput(e.target.value)}
 			onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
 			placeholder="할 일을 입력하세요"
-			className="flex-grow px-4 py-2 border border-white/30 bg-white/30 backdrop-blur-sm text-white placeholder-white/70 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+			className="flex-grow px-4 py-2 border border-white/30 bg-white/40 text-indigo-900 placeholder-indigo-500 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+			style={{ WebkitBackdropFilter: 'blur(12px)' }}
       />
 		<button
 			onClick={handleSubmit}

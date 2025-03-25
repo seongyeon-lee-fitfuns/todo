@@ -32,13 +32,13 @@ export default function Home() {
 
 	return (
 		<Layout>
-			<h1 className="text-4xl font-bold text-white text-center mb-8">
+			<h1 className="text-4xl font-bold text-indigo-900 text-center mb-8">
 				Todo App
 			</h1>
 			
 			{isLoading && !loadingTimeout ? (
-				<div className="bg-white/10 backdrop-blur-md p-6 rounded-lg shadow-lg mb-8 animate-pulse">
-					<p className="text-white text-center">로딩 중...</p>
+				<div className="bg-white/40 backdrop-blur-md p-6 rounded-lg shadow-lg mb-8 animate-pulse" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+					<p className="text-indigo-900 font-semibold text-center">로딩 중...</p>
 				</div>
 			) : user ? (
 				<nav className="grid gap-4">
@@ -54,8 +54,8 @@ export default function Home() {
 					/>
 				</nav>
 			) : (
-				<div className="bg-white/10 backdrop-blur-md p-6 rounded-lg shadow-lg mb-8 animate-pulse">
-					<p className="text-white text-center">로그인 페이지로 이동 중...</p>
+				<div className="bg-white/40 backdrop-blur-md p-6 rounded-lg shadow-lg mb-8 animate-pulse" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+					<p className="text-indigo-900 font-semibold text-center">로그인 페이지로 이동 중...</p>
 				</div>
 			)}
 

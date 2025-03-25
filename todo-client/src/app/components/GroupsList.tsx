@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { NakamaGroup, fetchGroupsWithMembership, joinGroup } from '../api/groupsApi';
-import Image from 'next/image';
 
 export default function GroupsList() {
   const [groups, setGroups] = useState<NakamaGroup[]>([]);
