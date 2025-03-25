@@ -51,7 +51,7 @@ end
 function M.check_admin_permission(user_id)
     if not M.is_admin(user_id) then
         nk.logger_info("권한 검사 실패")
-        error(nk.json_encode({message = "권한이 없습니다.", code = 16}))
+        return error({"권한이 없습니다.", 16})
     end
     nk.logger_info("권한 검사 통과")
     return true
