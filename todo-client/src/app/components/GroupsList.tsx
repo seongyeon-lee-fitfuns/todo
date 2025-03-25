@@ -209,10 +209,10 @@ export default function GroupsList() {
                   {group.isMember ? (
                     <>
                       <a
-                        href={`/groups/${group.id}/board`}
-                        className="py-2 px-4 rounded-md text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition-colors text-center"
+                        href={`/groups/${group.id}`}
+                        className="py-2 px-4 rounded-md text-white font-medium bg-purple-600 hover:bg-purple-700 transition-colors text-center"
                       >
-                        게시판
+                        상세 정보
                       </a>
                       <button
                         className="py-2 px-4 rounded-md text-white font-medium bg-green-600"
