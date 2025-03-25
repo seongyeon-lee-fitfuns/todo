@@ -9,7 +9,7 @@ export default function GroupsList() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [joinLoading, setJoinLoading] = useState<{[key: string]: boolean}>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showOnlyMyGroups, setShowOnlyMyGroups] = useState<boolean>(false);
@@ -63,11 +63,17 @@ export default function GroupsList() {
     loadGroups();
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('검색 실행:', searchQuery);
-    loadGroups(searchQuery);
-  };
+  // 검색어가 변경될 때마다 필터링 적용
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredGroups(groups);
+    } else {
+      const filtered = groups.filter(group => 
+        group.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredGroups(filtered);
+    }
+  }, [searchTerm, groups]);
 
   const handleJoinGroup = async (groupId: string, groupName: string) => {
     try {
@@ -79,7 +85,7 @@ export default function GroupsList() {
       setSuccessMessage(`"${groupName}" 그룹 가입 요청이 성공적으로 전송되었습니다!`);
       
       // 가입 요청 후 그룹 목록 갱신
-      await loadGroups(searchQuery);
+      await loadGroups(searchTerm);
     } catch (err) {
       console.error('그룹 가입 요청 오류:', err);
       setError(err instanceof Error ? err.message : '그룹 가입 요청 중 오류가 발생했습니다');
@@ -98,8 +104,8 @@ export default function GroupsList() {
   };
 
   return (
-    <div className="bg-white/10 backdrop-blur-md rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold text-white mb-6">그룹 목록</h2>
+    <div className="bg-white/10 backdrop-blur-md rounded-lg shadow-lg p-6 max-w-4xl mx-auto" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+      <h2 className="text-2xl font-bold text-indigo-900 mb-6">그룹 목록</h2>
       
       {successMessage && (
         <div className="bg-green-500/80 text-white p-3 rounded-md mb-4">
@@ -113,29 +119,22 @@ export default function GroupsList() {
         </div>
       )}
       
-      <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
-        <form onSubmit={handleSearch} className="w-full md:flex-1">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="그룹 이름으로 검색"
-              className="flex-1 bg-white/20 border border-white/30 rounded-md px-3 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors"
-            >
-              검색
-            </button>
-          </div>
-        </form>
+      <div className="flex flex-col md:flex-row items-stretch gap-4 mb-6">
+        <div className="md:flex-1">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="그룹 이름으로 검색"
+            className="w-full h-10 px-4 border border-white/30 bg-white/40 text-indigo-900 placeholder-indigo-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+          />
+        </div>
         
-        <div className="flex rounded-md shadow-sm w-full md:w-auto">
+        <div className="flex rounded-md shadow-sm">
           <button
             onClick={() => handleFilterChange(false)}
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`h-10 px-4 text-sm font-medium ${
               !showOnlyMyGroups
                 ? 'bg-blue-600 text-white'
                 : 'bg-white/20 text-white/80 hover:bg-white/30 hover:text-white'
@@ -145,7 +144,7 @@ export default function GroupsList() {
           </button>
           <button
             onClick={() => handleFilterChange(true)}
-            className={`px-4 py-2 text-sm font-medium ${
+            className={`h-10 px-4 text-sm font-medium ${
               showOnlyMyGroups
                 ? 'bg-green-600 text-white'
                 : 'bg-white/20 text-white/80 hover:bg-white/30 hover:text-white'
@@ -157,12 +156,12 @@ export default function GroupsList() {
       </div>
       
       {isLoading && filteredGroups.length === 0 ? (
-        <div className="text-center text-white py-8">
+        <div className="text-center text-indigo-900 py-8">
           <div className="animate-spin w-8 h-8 border-4 border-blue-500 rounded-full border-t-transparent mx-auto mb-2"></div>
           <p>그룹 목록을 불러오는 중...</p>
         </div>
       ) : filteredGroups.length === 0 ? (
-        <div className="text-center text-white py-8">
+        <div className="text-center text-indigo-900 py-8">
           <p>{showOnlyMyGroups ? '가입한 그룹이 없습니다.' : '표시할 그룹이 없습니다.'}</p>
         </div>
       ) : (
@@ -187,7 +186,7 @@ export default function GroupsList() {
                 
                 <div className="flex-1">
                   <div className="flex items-center">
-                    <h3 className="text-xl font-bold text-white">{group.name}</h3>
+                    <h3 className="text-xl font-bold text-indigo-900">{group.name}</h3>
                     {group.isMember && (
                       <span className="ml-2 px-2 py-1 text-xs bg-green-500 text-white rounded-full">
                         가입됨
@@ -196,10 +195,10 @@ export default function GroupsList() {
                   </div>
                   
                   {group.description && (
-                    <p className="text-white/80 mt-1">{group.description}</p>
+                    <p className="text-indigo-800 mt-1">{group.description}</p>
                   )}
                   
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-white/70">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-indigo-700">
                     <div>멤버: {group.edge_count || 0} / {group.max_count}</div>
                     <div>{group.open ? '공개 그룹' : '비공개 그룹'}</div>
                     <div>생성일: {formatDate(group.create_time)}</div>
@@ -235,9 +234,9 @@ export default function GroupsList() {
           {!showOnlyMyGroups && cursor && (
             <div className="text-center mt-4">
               <button
-                onClick={() => loadGroups(searchQuery, false)}
+                onClick={() => loadGroups(searchTerm, false)}
                 disabled={isLoading}
-                className={`py-2 px-6 rounded-md text-white font-medium ${
+                className={`px-4 py-2 text-white font-medium rounded-md ${
                   isLoading
                     ? 'bg-gray-500 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 transition-colors'
@@ -251,4 +250,4 @@ export default function GroupsList() {
       )}
     </div>
   );
-} 
+}
