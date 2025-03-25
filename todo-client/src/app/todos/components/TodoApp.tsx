@@ -123,7 +123,7 @@ export default function TodoApp({ title }: { title: string }) {
 	const basicTodos: TodoBase[] = todos.map(({ id, text, completed }) => ({ id, text, completed }));
 
 	return (
-		<div className="max-w-md mx-auto bg-white/20 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white/20">
+		<div className="max-w-md mx-auto backdrop-blur-md rounded-xl shadow-xl p-8 border border-white/20">
 			<h1 className="text-3xl font-bold text-center mb-8 font-geist-sans text-white">{title}</h1>
 			
 			{isLoading && (
