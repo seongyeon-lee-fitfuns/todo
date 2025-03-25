@@ -34,17 +34,13 @@ nk.register_rpc(function(context, payload)
     local collection = obj.collection
     local key = obj.key
     
-    nk.logger_info("obj: " .. nk.json_encode(obj))
     local value_obj = nk.json_decode(obj.value)
     -- TODO: 추후 여기에 권한 검사 로직을 추가할 수 있습니다.
     -- 관리자 권한 확인
     local is_admin = false
-    
-    nk.logger_info("EXTRACTED METADATA: " .. nk.json_encode(permissions))
     -- 그룹 메타데이터에서 권한 확인
     for _, metadata_info in ipairs(permissions) do
         -- JSON 문자열을 Lua 테이블로 디코딩
-        nk.logger_info("METADATA INFO: " .. nk.json_encode(metadata_info))
         if metadata_info.permission == "all" then
             is_admin = true
             break
@@ -55,10 +51,7 @@ nk.register_rpc(function(context, payload)
         nk.logger_info("권한 검사 통과")
     else
         nk.logger_info("권한 검사 실패")
-        return error({
-            code = 401,
-            message = "권한이 없습니다."
-        })
+        return error({"권한이 없습니다.", 16})
     end
 
     

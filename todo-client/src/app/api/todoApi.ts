@@ -314,19 +314,11 @@ export async function createTodoWithNakamaApi(todo: TodoBase, collection: string
 			method: 'POST',
 			body: JSON.stringify(rpcPayload),
 		});
-
+		console.log("response", response);
 		if (!response.ok) {
-			const errorData = await response.json().catch(() => null);
-			const errorMessage = errorData?.error || `요청 실패: ${response.status}`;
-			throw new Error(errorMessage);
+			throw new Error(response.statusText);
 		}
-		
 		const result = await response.json();
-		
-		if (!result || result.error) {
-			throw new Error(result?.error || 'Todo 생성에 실패했습니다');
-		}
-
 		// 메타데이터가 포함된 Todo 항목 반환
 		return {
 			...todo,

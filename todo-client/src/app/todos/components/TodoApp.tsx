@@ -55,6 +55,7 @@ export default function TodoApp({ title }: { title: string }) {
 				setTodos(prevTodos => [...prevTodos, todoInfo]);
 			})
 			.catch(err => {
+				console.error("err", JSON.stringify(err));
 				setError(err instanceof Error ? err.message : '할 일을 저장하는데 실패했습니다');
 			})
 			.finally(() => {
