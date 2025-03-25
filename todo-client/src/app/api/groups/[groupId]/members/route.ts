@@ -26,15 +26,7 @@ export async function GET(
     // Nakama API를 통해 그룹 멤버 목록 가져오기
     try {
       const nakamaUrl = process.env.NAKAMA_URL;
-      
-      if (!nakamaUrl) {
-        // 개발 환경에서는 목업 데이터 반환
-        console.warn('NAKAMA_URL 환경 변수가 설정되지 않았습니다. 목업 데이터를 반환합니다.');
-        return NextResponse.json({
-          members: createMockMembers(groupId)
-        });
-      }
-      
+
       // API 엔드포인트 구성
       let apiUrl = `${nakamaUrl}/v2/group/${groupId}/user?limit=${limit}`;
       if (state) apiUrl += `&state=${state}`;
@@ -52,7 +44,7 @@ export async function GET(
         console.warn(`Nakama API 응답 오류: ${response.status}`);
         // API 호출 실패 시 목업 데이터 반환
         return NextResponse.json({
-          members: createMockMembers(groupId)
+          group_users: createMockMembers(groupId)
         });
       }
       
@@ -63,7 +55,7 @@ export async function GET(
       console.error('Nakama API 호출 오류:', err);
       // 오류 발생 시 목업 데이터 반환
       return NextResponse.json({
-        members: createMockMembers(groupId)
+        group_users: createMockMembers(groupId)
       });
     }
     
@@ -87,51 +79,58 @@ function createMockMembers(groupId: string) {
       user: {
         id: "user-1",
         username: "admin_user",
-        display_name: "관리자",
-        avatar_url: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp"
+        lang_tag: "ko",
+        metadata: "{}",
+        edge_count: 3,
+        create_time: twoWeeksAgo,
+        update_time: now
       },
-      state: 2, // 관리자
-      join_time: twoWeeksAgo
+      state: 2 // 관리자
     },
     {
       user: {
         id: "user-2",
         username: "developer1",
-        display_name: "개발자1",
-        avatar_url: "https://www.gravatar.com/avatar/11111111111111111111111111111111?d=mp"
+        lang_tag: "ko",
+        metadata: "{}",
+        edge_count: 1,
+        create_time: lastWeek,
+        update_time: lastWeek
       },
-      state: 1, // 일반 멤버
-      join_time: lastWeek
+      state: 1 // 일반 멤버
     },
     {
       user: {
         id: "user-3",
         username: "developer2",
-        display_name: "개발자2",
-        avatar_url: "https://www.gravatar.com/avatar/22222222222222222222222222222222?d=mp"
+        lang_tag: "ko",
+        metadata: "{}",
+        create_time: now,
+        update_time: now
       },
-      state: 1, // 일반 멤버
-      join_time: now
+      state: 1 // 일반 멤버
     },
     {
       user: {
         id: "user-4",
         username: "designer1",
-        display_name: "디자이너",
-        avatar_url: "https://www.gravatar.com/avatar/33333333333333333333333333333333?d=mp"
+        lang_tag: "ko",
+        metadata: "{}",
+        create_time: lastWeek,
+        update_time: lastWeek
       },
-      state: 1, // 일반 멤버
-      join_time: lastWeek
+      state: 1 // 일반 멤버
     },
     {
       user: {
         id: "user-5",
         username: "tester1",
-        display_name: "테스터",
-        avatar_url: "https://www.gravatar.com/avatar/44444444444444444444444444444444?d=mp"
+        lang_tag: "ko",
+        metadata: "{}",
+        create_time: now,
+        update_time: now
       },
-      state: 1, // 일반 멤버
-      join_time: now
+      state: 1 // 일반 멤버
     }
   ];
 } 

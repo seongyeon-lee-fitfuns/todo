@@ -15,33 +15,21 @@ export async function GET(
       );
     }
     
-    const token = authHeader.substring(7);
-    
     // Nakama API를 통해 그룹 정보 가져오기
-    try {
-      const nakamaUrl = process.env.NAKAMA_URL;
-      
-      if (!nakamaUrl) {
-        // 개발 환경에서는 목업 데이터 반환
-        console.warn('NAKAMA_URL 환경 변수가 설정되지 않았습니다. 목업 데이터를 반환합니다.');
-        return NextResponse.json({
-          group: createMockGroupInfo(groupId)
-        });
-      }
-      
+    try {   
       // 실제 Nakama API 호출
-      const response = await fetch(`${nakamaUrl}/v2/group/${groupId}`, {
+      const response = await fetch(`${process.env.NAKAMA_SERVER_URL}/v2/console/group/${groupId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Basic ${Buffer.from("admin:password").toString('base64')}`
         }
       });
+      console.log("group info", response);
       
       if (!response.ok) {
         console.warn(`Nakama API 응답 오류: ${response.status}`);
-        // API 호출 실패 시 목업 데이터 반환
         return NextResponse.json({
-          group: createMockGroupInfo(groupId)
+          error: '그룹 정보를 가져오는데 실패했습니다'
         });
       }
       
@@ -66,28 +54,3 @@ export async function GET(
     );
   }
 }
-
-// 목업 그룹 정보 생성 함수
-function createMockGroupInfo(groupId: string) {
-  const now = new Date().toISOString();
-  const yesterday = new Date(Date.now() - 86400000).toISOString();
-  
-  return {
-    id: groupId,
-    creator_id: "creator-user-id",
-    name: "나의 대표 그룹",
-    description: "이 그룹은 테스트 및 개발을 위한 목업 그룹입니다.",
-    lang_tag: "ko",
-    open: true,
-    edge_count: 5,
-    max_count: 100,
-    create_time: yesterday,
-    update_time: now,
-    metadata: {
-      icon: "🚀",
-      category: "개발",
-      tags: ["프로젝트", "할일관리", "협업"]
-    },
-    state: 2  // 2는 관리자
-  };
-} 

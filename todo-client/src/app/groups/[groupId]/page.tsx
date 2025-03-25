@@ -89,7 +89,24 @@ export default function GroupDetailPage({ params }: { params: { groupId: string 
 
         if (membersResponse.ok) {
           const membersData = await membersResponse.json();
-          setMembers(membersData.members || []);
+          console.log("group members", membersData.group_users);
+          
+          // 멤버 데이터 가공: group_users 배열을 컴포넌트에 맞는 형식으로 변환
+          if (membersData.group_users && Array.isArray(membersData.group_users)) {
+            const formattedMembers = membersData.group_users.map((member: any) => ({
+              user: {
+                id: member.user.id,
+                username: member.user.username || '익명',
+                display_name: member.user.username || '익명', // Nakama API에서는 display_name이 없으므로 username 사용
+                avatar_url: member.user.avatar_url || undefined
+              },
+              state: member.state,
+              join_time: member.user.create_time
+            }));
+            setMembers(formattedMembers);
+          } else {
+            setMembers([]);
+          }
         }
       } catch (err) {
         console.error('그룹 정보 가져오기 오류:', err);
