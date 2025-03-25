@@ -20,9 +20,19 @@ export async function GET(req: NextRequest) {
     if (!nakamaUrl) {
       throw new Error('NAKAMA_URL 환경 변수가 설정되지 않았습니다');
     }
+    const user = await fetch(`${nakamaUrl}/v2/account`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    // 올바른 엔드포인트 사용 (사용자 그룹 목록: /v2/user/groups)
-    const response = await fetch(`${nakamaUrl}/v2/user/groups?state=1&state=2`, {
+    const userData = await user.json();
+    const userId = userData.user.id;
+    console.log('userId: in server', userId);
+    
+    // 올바른 엔드포인트 사용 (사용자 그룹 목록: /v2/account/groups)
+    const response = await fetch(`${nakamaUrl}/v2/user/${userId}/group`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

@@ -138,17 +138,34 @@ export async function fetchUserGroups(): Promise<NakamaGroup[]> {
       throw new Error('인증 토큰이 없습니다. 로그인이 필요합니다.');
     }
 
-    const response = await fetch('/api/nakama-groups/user', {
+    console.log('토큰 확인:', token ? '토큰 있음 (첫 10자: ' + token.substr(0, 10) + '...)' : '토큰 없음');
+
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache'
+    };
+    
+    console.log('API 요청 헤더:', headers);
+    
+    const response = await fetch(`/api/nakama-groups/user`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers,
+      cache: 'no-store'
     });
 
+    console.log('API 응답 상태:', response.status, response.statusText);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('사용자 그룹 목록 가져오기 실패 응답:', errorData);
-      throw new Error(errorData?.error || `요청 실패: ${response.status}`);
+      const errorText = await response.text();
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error('사용자 그룹 목록 가져오기 실패 응답:', errorData);
+        throw new Error(errorData?.error || `요청 실패: ${response.status}`);
+      } catch (jsonError) {
+        console.error('사용자 그룹 목록 가져오기 실패 (응답 파싱 오류):', errorText);
+        throw new Error(`요청 실패 (${response.status}): ${errorText}`);
+      }
     }
 
     const data = await response.json();
@@ -156,16 +173,20 @@ export async function fetchUserGroups(): Promise<NakamaGroup[]> {
     console.log('사용자 그룹 응답 데이터:', data);
     
     // 그룹 데이터가 없으면 빈 배열 반환
-    if (!data || (!data.groups && !Array.isArray(data.user_groups))) {
-      console.warn('사용자 그룹 데이터 형식이 예상과 다릅니다:', data);
+    if (!data) {
+      console.warn('사용자 그룹 데이터가 없습니다.');
       return [];
     }
 
     // API 응답 구조에 따라 그룹 데이터 추출
-    let groups = data.groups;
+    let groups: NakamaGroup[] = [];
     
+    // groups 배열이 직접 있는 경우
+    if (Array.isArray(data.groups)) {
+      groups = data.groups;
+    } 
     // user_groups 형식으로 응답이 왔을 경우 처리
-    if (!groups && Array.isArray(data.user_groups)) {
+    else if (Array.isArray(data.user_groups)) {
       groups = data.user_groups.map((ug: any) => ({
         ...ug.group,
         state: ug.state,
@@ -173,7 +194,13 @@ export async function fetchUserGroups(): Promise<NakamaGroup[]> {
       }));
     }
     
-    return groups || [];
+    console.log('변환된 사용자 그룹 데이터:', groups);
+    
+    // 모든 그룹에 isMember 플래그 추가
+    return groups.map(group => ({
+      ...group,
+      isMember: true // 내 그룹 목록이므로 모두 true로 설정
+    }));
   } catch (error) {
     console.error('사용자 그룹 목록 가져오기 실패:', error);
     throw error;
