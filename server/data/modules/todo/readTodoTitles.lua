@@ -1,6 +1,8 @@
 local nk = require("nakama")
+local permissions = require("auth.permissions")
 
-nk.register_rpc(function(context, payload)
+-- 핸들러 함수 정의
+local function handle_read_todo_titles(context, payload)
     -- 페이로드 파싱 (읽기에는 특별한 페이로드가 필요 없을 수 있습니다)
     local json_payload = nil
     if payload and payload ~= "" then
@@ -55,6 +57,8 @@ nk.register_rpc(function(context, payload)
         }
     end
 
-    -- TODO: 추후 여기에 권한 필터링 로직을 추가할 수 있습니다.
     return nk.json_encode(response)
-end, "read_todo_titles")
+end
+
+-- 핸들러를 RPC 등록 (읽기 작업이므로 권한 확인 없이 등록)
+nk.register_rpc(handle_read_todo_titles, "read_todo_titles")

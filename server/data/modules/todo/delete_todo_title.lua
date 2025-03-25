@@ -1,15 +1,13 @@
 local nk = require("nakama")
+local permissions = require("auth.permissions")
 
-
-nk.register_rpc(function(context, payload)
+-- 핸들러 함수 정의
+local function handle_delete_todo_title(context, payload)
     -- 페이로드 파싱
     local json_payload = nk.json_decode(payload)
     nk.logger_info("페이로드: " .. nk.json_encode(json_payload))
     local title = json_payload
     nk.logger_info("title: " .. nk.json_encode(title))
-
-    -- TODO: 추후 여기에 권한 검사 로직을 추가할 수 있습니다.
-
     
     -- 스토리지 쓰기 객체 구성
     local storage_object = {
@@ -79,4 +77,7 @@ nk.register_rpc(function(context, payload)
   
     
     return nk.json_encode(storage_object.value)
-end, "delete_todo_title")
+end
+
+-- 핸들러를 admin 권한으로 래핑하여 RPC 등록
+nk.register_rpc(permissions.with_admin_permission(handle_delete_todo_title), "delete_todo_title")

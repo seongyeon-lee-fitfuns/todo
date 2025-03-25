@@ -1,4 +1,5 @@
 local nk = require("nakama")
+local permissions = require("auth.permissions")
 
 local function get_owner_by_collection_key(collection, key)
     local objects, err = nk.storage_read({
@@ -20,8 +21,8 @@ local function get_owner_by_collection_key(collection, key)
     end
 end
 
-
-nk.register_rpc(function(context, payload)
+-- 핸들러 함수 정의
+local function handle_update_todo(context, payload)
     -- 페이로드 파싱
     local json_payload = nk.json_decode(payload)
     nk.logger_info("페이로드: " .. nk.json_encode(json_payload))
@@ -94,4 +95,7 @@ nk.register_rpc(function(context, payload)
     }
     
     return nk.json_encode(response)
-end, "update_todo")
+end
+
+-- 핸들러를 admin 권한으로 래핑하여 RPC 등록
+nk.register_rpc(permissions.with_admin_permission(handle_update_todo), "update_todo")
