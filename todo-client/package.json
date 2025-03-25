@@ -9,12 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "framer-motion": "^12.5.0",
     "@auth0/nextjs-auth0": "^3.6.0",
+    "@types/uuid": "^10.0.0",
+    "framer-motion": "^12.5.0",
     "next": "14.2.13",
     "react": "^18",
     "react-dom": "^18",
-    "react-spring": "^9.7.5"
+    "react-spring": "^9.7.5",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/node": "^20",

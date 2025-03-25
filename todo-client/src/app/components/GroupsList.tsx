@@ -205,14 +205,22 @@ export default function GroupsList() {
                   </div>
                 </div>
                 
-                <div>
+                <div className="flex flex-col space-y-2">
                   {group.isMember ? (
-                    <button
-                      className="py-2 px-4 rounded-md text-white font-medium bg-green-600"
-                      disabled
-                    >
-                      가입됨
-                    </button>
+                    <>
+                      <a
+                        href={`/groups/${group.id}/board`}
+                        className="py-2 px-4 rounded-md text-white font-medium bg-indigo-600 hover:bg-indigo-700 transition-colors text-center"
+                      >
+                        게시판
+                      </a>
+                      <button
+                        className="py-2 px-4 rounded-md text-white font-medium bg-green-600"
+                        disabled
+                      >
+                        가입됨
+                      </button>
+                    </>
                   ) : (
                     <button
                       onClick={() => handleJoinGroup(group.id, group.name)}
